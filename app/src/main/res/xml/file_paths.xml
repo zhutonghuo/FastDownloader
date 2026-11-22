@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path
+        name="internal"
+        path="." />
+    <external-path
+        name="external"
+        path="." />
+    <external-files-path
+        name="appfiles"
+        path="." />
+    <external-files-path
+        name="appfiles2"
+        path="Download/" />
+    <root-path
+        name="root"
+        path="." />
+</paths>
