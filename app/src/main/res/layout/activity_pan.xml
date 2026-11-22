@@ -40,11 +40,25 @@
             android:textSize="14sp" />
 
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="网盘平台"
+            android:textSize="12sp" />
+
+        <Spinner
+            android:id="@+id/panPlatformSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input" />
+
+        <TextView
             android:id="@+id/panPlatform"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="平台：等待识别…"
+            android:text="已选平台：自动识别"
             android:textSize="12sp" />
 
         <TextView
