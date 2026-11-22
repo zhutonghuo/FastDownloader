@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="8dp">
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/app_name"
+            android:textSize="19sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white" />
+
+        <TextView
+            android:id="@+id/btnPan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:text="网盘"
+            android:textSize="14sp"
+            android:textColor="@android:color/white"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:id="@+id/btnLan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:text="互传"
+            android:textSize="14sp"
+            android:textColor="@android:color/white"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:id="@+id/btnHistory"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:text="历史"
+            android:textSize="14sp"
+            android:textColor="@android:color/white"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:id="@+id/btnSetting"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:text="设置"
+            android:textSize="14sp"
+            android:textColor="@android:color/white"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/panelAdd"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:paddingBottom="12dp">
+
+        <EditText
+            android:id="@+id/inputUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:hint="粘贴下载链接或磁力链接"
+            android:textSize="14sp"
+            android:inputType="textUri|textMultiLine"
+            android:maxLines="3"
+            android:background="@drawable/bg_input" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="10dp">
+
+            <TextView
+                android:id="@+id/btnPaste"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:paddingLeft="18dp"
+                android:paddingRight="18dp"
+                android:text="读取剪贴板"
+                android:textSize="13sp"
+                android:background="@drawable/bg_pill" />
+
+            <TextView
+                android:id="@+id/btnAdd"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginLeft="10dp"
+                android:gravity="center"
+                android:paddingLeft="26dp"
+                android:paddingRight="26dp"
+                android:text="添加"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white"
+                android:background="@drawable/bg_pill_filled" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/panelStat"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/statText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/updateCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginBottom="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:visibility="gone"
+        android:background="@drawable/bg_pill">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/updateTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="发现新版本"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/updateDesc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="点击下载安装"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/updateBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:paddingLeft="18dp"
+            android:paddingRight="18dp"
+            android:text="更新"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:background="@drawable/bg_pill_filled" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ListView
+            android:id="@+id/list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="0dp"
+            android:clipToPadding="false"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="24dp"
+            android:scrollbarStyle="outsideOverlay" />
+
+        <TextView
+            android:id="@+id/empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:text="还没有下载任务\n粘贴链接后点“添加”即可开始"
+            android:textSize="13sp"
+            android:lineSpacingExtra="6dp"
+            android:visibility="gone" />
+    </FrameLayout>
+
+</LinearLayout>
