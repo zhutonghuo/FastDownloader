@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="blue_primary">#1B6EF3</color>
+    <color name="blue_primary_dark">#0B4FBF</color>
+    <color name="blue_bg">#F4F7FC</color>
+    <color name="blue_card">#FFFFFF</color>
+    <color name="blue_text">#16202E</color>
+    <color name="blue_sub">#6B7A8F</color>
+    <color name="blue_line">#E1E8F2</color>
+    <color name="blue_track">#DCE6F5</color>
+
+    <color name="green_primary">#17A673</color>
+    <color name="green_primary_dark">#0E7C55</color>
+    <color name="green_bg">#F2FAF6</color>
+    <color name="green_card">#FFFFFF</color>
+    <color name="green_text">#12241C</color>
+    <color name="green_sub">#5E7A6D</color>
+    <color name="green_line">#DCEDE4</color>
+    <color name="green_track">#D6ECE2</color>
+
+    <color name="orange_primary">#F07A1A</color>
+    <color name="orange_primary_dark">#C25A08</color>
+    <color name="orange_bg">#FFF8F2</color>
+    <color name="orange_card">#FFFFFF</color>
+    <color name="orange_text">#2B1B0E</color>
+    <color name="orange_sub">#8A6A52</color>
+    <color name="orange_line">#F5E2D2</color>
+    <color name="orange_track">#F7E2CE</color>
+
+    <color name="dark_primary">#6E8BFF</color>
+    <color name="dark_primary_dark">#4E6BE0</color>
+    <color name="dark_bg">#12141A</color>
+    <color name="dark_card">#1C1F27</color>
+    <color name="dark_text">#ECEFF6</color>
+    <color name="dark_sub">#98A1B3</color>
+    <color name="dark_line">#2A2F3A</color>
+    <color name="dark_track">#2E3441</color>
+</resources>
