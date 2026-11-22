@@ -57,7 +57,7 @@ public final class PanResolver {
         {"lanzou", "蓝奏云", "(?:^|[/.])(?:lanzou[a-z0-9-]*|lan[zs]o[ux])\\.(?:com|net|org|cn)/([A-Za-z0-9]+)"},
     };
 
-    public static Share parse(String text) {
+    public static Share parse(String text, String forcePlatform) {
         if (text == null) return null;
         Matcher um = URL_RE.matcher(text.trim());
         if (!um.find()) return null;
@@ -68,6 +68,25 @@ public final class PanResolver {
         if (pwd == null) {
             Matcher tm = PWD_TEXT.matcher(text);
             if (tm.find()) pwd = tm.group(1);
+        }
+        if (forcePlatform != null && !forcePlatform.isEmpty() && !"github".equals(forcePlatform)) {
+            for (String[] p : PATTERNS) {
+                if (!forcePlatform.equals(p[0])) continue;
+                Matcher m = Pattern.compile(p[2], Pattern.CASE_INSENSITIVE).matcher(url);
+                if (m.find()) {
+                    String sid = m.group(1);
+                    if ("baidu".equals(p[0]) && sid.startsWith("1")) sid = sid.substring(1);
+                    Share s = new Share();
+                    s.platform = p[0]; s.platformName = p[1]; s.shareId = sid;
+                    s.pwd = pwd; s.url = url;
+                    return s;
+                }
+            }
+            Share s = new Share();
+            s.platform = forcePlatform; s.platformName = forcePlatform;
+            s.shareId = url.replaceAll(".*/", "").replaceAll("\\?.*$", "");
+            s.pwd = pwd; s.url = url;
+            return s;
         }
         for (String[] p : PATTERNS) {
             Matcher m = Pattern.compile(p[2], Pattern.CASE_INSENSITIVE).matcher(url);
@@ -90,6 +109,8 @@ public final class PanResolver {
         }
         return null;
     }
+
+    public static Share parse(String text) { return parse(text, null); }
 
     private static String httpGet(String url, Map<String, String> headers) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
