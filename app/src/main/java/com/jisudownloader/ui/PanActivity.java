@@ -5,9 +5,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,7 +29,12 @@ public class PanActivity extends Activity {
     private EditText input;
     private EditText cookieInput;
     private TextView platform;
+    private Spinner platformSpinner;
     private ListView list;
+    private static final String[] PLATFORM_IDS = {null, "quark", "uc", "baidu", "xunlei", "c139",
+            "pan123", "pan115", "guangya", "ilanzou", "lanzou", "github"};
+    private static final String[] PLATFORM_NAMES = {"自动识别", "夸克网盘", "UC网盘", "百度网盘", "迅雷网盘",
+            "139和彩云", "123云盘", "115网盘", "光鸭云盘", "蓝奏云优享", "蓝奏云", "GitHub"};
     private final List<PanResolver.PanFile> files = new ArrayList<>();
     private final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
 
@@ -44,20 +51,53 @@ public class PanActivity extends Activity {
         input = findViewById(R.id.panInput);
         cookieInput = findViewById(R.id.panCookie);
         platform = findViewById(R.id.panPlatform);
+        platformSpinner = findViewById(R.id.panPlatformSpinner);
         list = findViewById(R.id.panList);
         list.setAdapter(new FileAdapter());
+
+        ArrayAdapter<String> pa = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, PLATFORM_NAMES);
+        pa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        platformSpinner.setAdapter(pa);
+        platformSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> p, android.view.View v, int pos, long id) {
+                platform.setText("已选平台：" + PLATFORM_NAMES[pos]);
+                input.setHint(hintFor(PLATFORM_IDS[pos]));
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> p) { }
+        });
 
         findViewById(R.id.btnParse).setOnClickListener(v -> parse());
         findViewById(R.id.btnWebLogin).setOnClickListener(v -> openLogin());
         list.setOnItemClickListener((p, v, pos, id) -> addTask(files.get(pos)));
     }
 
+    private String hintFor(String pid) {
+        if (pid == null) return "粘贴网盘分享链接（可整段，自动提取提取码）";
+        switch (pid) {
+            case "quark": return "https://pan.quark.cn/s/xxxx 提取码: abcd";
+            case "uc": return "https://drive.uc.cn/s/xxxx 密码: abcd";
+            case "baidu": return "https://pan.baidu.com/s/1xxxx 提取码: abcd";
+            case "xunlei": return "https://pan.xunlei.com/s/xxxx?pwd=abcd";
+            case "github": return "https://github.com/owner/repo";
+            case "lanzou": return "https://www.lanzoui.com/xxxx";
+            case "ilanzou": return "https://www.ilanzou.com/s/xxxx";
+            default: return "粘贴 " + pid + " 的分享链接";
+        }
+    }
+
+    private String pickedPlatform() {
+        int pos = platformSpinner.getSelectedItemPosition();
+        return pos >= 0 && pos < PLATFORM_IDS.length ? PLATFORM_IDS[pos] : null;
+    }
+
     private void openLogin() {
+        String pid = pickedPlatform();
         String text = input.getText().toString().trim();
-        PanResolver.Share share = PanResolver.parse(text);
-        String platform = share == null ? "quark" : share.platform;
+        PanResolver.Share share = text.isEmpty() ? null : PanResolver.parse(text);
+        String p = pid != null ? pid : (share == null ? "quark" : share.platform);
         android.content.Intent i = new android.content.Intent(this, PanLoginActivity.class);
-        i.putExtra(PanLoginActivity.EXTRA_PLATFORM, platform);
+        i.putExtra(PanLoginActivity.EXTRA_PLATFORM, p);
         startActivityForResult(i, 1001);
     }
 
@@ -79,7 +119,7 @@ public class PanActivity extends Activity {
             toast("请先粘贴分享链接");
             return;
         }
-        PanResolver.Share share = PanResolver.parse(text);
+        PanResolver.Share share = PanResolver.parse(text, pickedPlatform());
         if (share == null) {
             platform.setText("平台：未识别（检查链接格式）");
             toast("未识别的网盘链接");
