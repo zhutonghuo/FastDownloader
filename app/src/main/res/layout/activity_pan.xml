@@ -75,6 +75,19 @@
             android:background="@drawable/bg_pill_filled" />
 
         <TextView
+            android:id="@+id/btnMyFiles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:padding="14dp"
+            android:gravity="center"
+            android:text="我的文件（登录后浏览网盘）"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:background="@drawable/bg_pill_filled" />
+
+        <TextView
             android:id="@+id/btnParse"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
