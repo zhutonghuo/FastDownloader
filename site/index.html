@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>极速下载器 Windows 版 · 与安卓互通的局域网互传</title>
+<meta name="description" content="极速下载器 Windows 版：单文件 exe，与安卓版完全互通的局域网互传工具。聊天、文件夹互传、内置播放器、仅撤回自己。">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+:root{--bg:#f2f5f9;--card:#fff;--text:#0b1725;--muted:#586a80;--border:rgba(12,35,70,.10);--accent:#2563eb;--accent2:#10b981;--shadow:0 18px 50px rgba(20,40,80,.12);--panel:rgba(12,35,70,.04)}
+:root[data-theme="dark"]{--bg:#070c16;--card:#0e1626;--text:#e8eef7;--muted:#93a3b8;--border:rgba(255,255,255,.09);--accent:#60a5fa;--accent2:#34d399;--shadow:0 18px 50px rgba(0,0,0,.5);--panel:rgba(255,255,255,.04)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;transition:background .3s,color .3s;overflow-x:hidden}
+.wrap{max-width:960px;margin:0 auto;padding:0 22px}
+.nav{position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(255,255,255,.75);border-bottom:1px solid var(--border)}
+:root[data-theme="dark"] .nav{background:rgba(7,12,22,.72)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:62px}
+.brand{font-weight:800;font-size:17px;display:flex;align-items:center;gap:9px}
+.brand b{color:var(--accent)}
+.theme{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:7px 13px;cursor:pointer;font-size:13px}
+.hero{text-align:center;padding:64px 0 26px}
+.badge{display:inline-block;background:rgba(37,99,235,.1);color:var(--accent);border-radius:30px;padding:5px 16px;font-size:13px;font-weight:600;margin-bottom:18px}
+h1{font-size:clamp(30px,6vw,50px);font-weight:800;letter-spacing:-1px;line-height:1.25}
+h1 em{font-style:normal;background:linear-gradient(120deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--muted);font-size:17px;margin:16px auto 0;max-width:640px}
+.dl{display:flex;flex-direction:column;align-items:center;gap:12px;margin:34px 0 12px}
+.btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(120deg,var(--accent),#1d4ed8);color:#fff;font-size:17px;font-weight:700;padding:16px 40px;border-radius:14px;text-decoration:none;box-shadow:0 12px 30px rgba(37,99,235,.35);transition:.18s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(37,99,235,.45)}
+.btn small{font-weight:500;opacity:.85;font-size:13px}
+.meta{color:var(--muted);font-size:13px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:30px;box-shadow:var(--shadow);margin:28px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:22px}
+.feat{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:18px 20px}
+.feat h3{font-size:15px;margin-bottom:6px}
+.feat p{font-size:13px;color:var(--muted)}
+.interop{display:flex;gap:14px;flex-wrap:wrap;margin-top:18px}
+.step{flex:1;min-width:200px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
+.step .n{display:inline-flex;width:26px;height:26px;align-items:center;justify-content:center;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:700;margin-bottom:8px}
+.step p{font-size:13px;color:var(--muted)}
+code{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:12px;color:var(--accent);word-break:break-all}
+.foot{text-align:center;color:var(--muted);font-size:12px;padding:30px 0 46px}
+@media(max-width:600px){.hero{padding:44px 0 18px}.btn{font-size:15px;padding:14px 28px;width:100%;justify-content:center}}
+</style>
+</head>
+<body>
+<div class="nav"><div class="wrap">
+  <div class="brand"><span>⚡</span> 极速下载器 <b>Windows</b></div>
+  <button class="theme" id="themeBtn">◐ 切换主题</button>
+</div></div>
+
+<div class="wrap">
+  <section class="hero">
+    <span class="badge">单文件 · 免安装 · 与安卓互通</span>
+    <h1>高速下载，<em>也能互通</em></h1>
+    <p class="lead">HTTP 多线程分片下载（断点续传），同时与安卓版「极速下载器」完全互通——开房间让安卓扫码加入，或加入安卓房间。聊天、传文件，不经过任何服务器。</p>
+    <div class="dl">
+      <a class="btn" href="FastDownloader.exe" download>⬇ 下载 Windows 版 <small>exe · 约 35 MB</small></a>
+      <span class="meta">单文件 exe，双击即用，无需 Python 环境 · 需要 Windows 10/11</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 style="font-size:20px">核心功能</h2>
+    <div class="grid">
+      <div class="feat"><h3>⚡ 多线程高速下载</h3><p>HTTP/HTTPS 直链 2~32 线程 Range 分片并发，实时进度与速度，支持暂停继续、断点续传。</p></div>
+      <div class="feat"><h3>🔗 双向互通</h3><p>与安卓版共用同一协议：Windows 开房间安卓加入，或 Windows 加入安卓房间，浏览器访客也能参与。</p></div>
+      <div class="feat"><h3>💬 微信式聊天</h3><p>文本 + 文件气泡，自己靠右、他人靠左，带发送时间与未读提示。</p></div>
+      <div class="feat"><h3>📁 文件夹互传</h3><p>支持上传整个文件夹并保留目录结构，下载到本地任意位置。</p></div>
+      <div class="feat"><h3>▶️ 内置播放器</h3><p>图片、视频、音频均在应用内预览播放，不调用外部播放器。</p></div>
+      <div class="feat"><h3>↩️ 仅撤回自己</h3><p>只能撤回自己发送的文本和文件，撤回后对所有成员生效。</p></div>
+      <div class="feat"><h3>🎨 现代界面</h3><p>原生 Qt 卡片式设计，浅色/深色主题切换，非 win32 丑控件。</p></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 style="font-size:20px">怎么和安卓连起来？</h2>
+    <div class="interop">
+      <div class="step"><span class="n">1</span><p>确保 Windows 与安卓在同一 Wi-Fi / 局域网。</p></div>
+      <div class="step"><span class="n">2</span><p>一端开房间（显示口令与地址 <code>http://IPv4:端口</code> 和二维码）。</p></div>
+      <div class="step"><span class="n">3</span><p>另一端选「加入房间」，扫码或填地址 + 口令即可一起互传。</p></div>
+    </div>
+  </section>
+
+  <div class="foot">极速下载器 Windows v1.7 · <a href="https://github.com/zhutonghuo/fastdownloader-windows" style="color:var(--accent)">GitHub 源码</a> · 数据仅在本局域网传输</div>
+</div>
+
+<script>
+(function(){
+  var b=document.body, k='fdwin-theme';
+  try{ if(localStorage.getItem(k)==='dark') b.setAttribute('data-theme','dark'); }catch(e){}
+  document.getElementById('themeBtn').onclick=function(){
+    var d=b.getAttribute('data-theme')==='dark';
+    if(d) b.removeAttribute('data-theme'); else b.setAttribute('data-theme','dark');
+    try{ localStorage.setItem(k, d?'light':'dark'); }catch(e){}
+  };
+})();
+</script>
+</body>
+</html>
