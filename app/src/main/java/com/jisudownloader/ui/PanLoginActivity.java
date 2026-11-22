@@ -53,7 +53,10 @@ public class PanLoginActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setUserAgentString("Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36");
-        s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        s.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+        s.setRenderPriority(WebSettings.RenderPriority.HIGH);
+        s.setLoadsImagesAutomatically(true);
+        try { s.setDatabaseEnabled(true); } catch (Exception ignored) {}
 
         CookieManager cm = CookieManager.getInstance();
         cm.setAcceptCookie(true);
@@ -61,12 +64,18 @@ public class PanLoginActivity extends Activity {
             cm.setAcceptThirdPartyCookies(web, true);
         }
 
+        final TextView titleLbl = findViewById(R.id.loginTitle);
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override public void onProgressChanged(WebView v, int p) {
+                titleLbl.setText("登录 " + platform + " · 加载中 " + p + "%");
+            }
+        });
         web.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView v, String url) {
                 collect(url);
+                titleLbl.setText("登录 " + platform + " · 完成后点右上角");
             }
         });
-        web.setWebChromeClient(new WebChromeClient());
         web.loadUrl(loginUrl(platform));
 
         findViewById(R.id.btnDone).setOnClickListener(v -> finishWithCookies());
