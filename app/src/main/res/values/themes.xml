@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ThemeJisuBase" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/blue_bg</item>
+        <item name="android:statusBarColor">@color/blue_primary_dark</item>
+        <item name="android:navigationBarColor">@color/blue_bg</item>
+        <item name="android:textColorPrimary">@color/blue_text</item>
+        <item name="android:colorAccent">@color/blue_primary</item>
+        <item name="colorPrimary">@color/blue_primary</item>
+        <item name="colorBg">@color/blue_bg</item>
+        <item name="colorCard">@color/blue_card</item>
+        <item name="colorText">@color/blue_text</item>
+        <item name="colorSub">@color/blue_sub</item>
+        <item name="colorLine">@color/blue_line</item>
+        <item name="colorTrack">@color/blue_track</item>
+    </style>
+
+    <style name="ThemeJisuGreen" parent="@style/ThemeJisuBase">
+        <item name="android:statusBarColor">@color/green_primary_dark</item>
+        <item name="android:navigationBarColor">@color/green_bg</item>
+        <item name="android:windowBackground">@color/green_bg</item>
+        <item name="android:textColorPrimary">@color/green_text</item>
+        <item name="android:colorAccent">@color/green_primary</item>
+        <item name="colorPrimary">@color/green_primary</item>
+        <item name="colorBg">@color/green_bg</item>
+        <item name="colorCard">@color/green_card</item>
+        <item name="colorText">@color/green_text</item>
+        <item name="colorSub">@color/green_sub</item>
+        <item name="colorLine">@color/green_line</item>
+        <item name="colorTrack">@color/green_track</item>
+    </style>
+
+    <style name="ThemeJisuOrange" parent="@style/ThemeJisuBase">
+        <item name="android:statusBarColor">@color/orange_primary_dark</item>
+        <item name="android:navigationBarColor">@color/orange_bg</item>
+        <item name="android:windowBackground">@color/orange_bg</item>
+        <item name="android:textColorPrimary">@color/orange_text</item>
+        <item name="android:colorAccent">@color/orange_primary</item>
+        <item name="colorPrimary">@color/orange_primary</item>
+        <item name="colorBg">@color/orange_bg</item>
+        <item name="colorCard">@color/orange_card</item>
+        <item name="colorText">@color/orange_text</item>
+        <item name="colorSub">@color/orange_sub</item>
+        <item name="colorLine">@color/orange_line</item>
+        <item name="colorTrack">@color/orange_track</item>
+    </style>
+
+    <style name="ThemeJisuDark" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/dark_bg</item>
+        <item name="android:statusBarColor">@color/dark_bg</item>
+        <item name="android:navigationBarColor">@color/dark_bg</item>
+        <item name="android:textColorPrimary">@color/dark_text</item>
+        <item name="android:colorAccent">@color/dark_primary</item>
+        <item name="colorPrimary">@color/dark_primary</item>
+        <item name="colorBg">@color/dark_bg</item>
+        <item name="colorCard">@color/dark_card</item>
+        <item name="colorText">@color/dark_text</item>
+        <item name="colorSub">@color/dark_sub</item>
+        <item name="colorLine">@color/dark_line</item>
+        <item name="colorTrack">@color/dark_track</item>
+    </style>
+
+    <attr name="colorPrimary" format="color" />
+    <attr name="colorBg" format="color" />
+    <attr name="colorCard" format="color" />
+    <attr name="colorText" format="color" />
+    <attr name="colorSub" format="color" />
+    <attr name="colorLine" format="color" />
+    <attr name="colorTrack" format="color" />
+</resources>
