@@ -68,6 +68,12 @@
             android:parentActivityName=".ui.PanActivity" />
 
         <activity
+            android:name=".ui.MyFilesActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:parentActivityName=".ui.PanActivity" />
+
+        <activity
             android:name=".ui.LanActivity"
             android:exported="false"
             android:screenOrientation="portrait"
