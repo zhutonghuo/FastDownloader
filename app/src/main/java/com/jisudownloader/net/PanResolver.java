@@ -294,6 +294,100 @@ public final class PanResolver {
         return out;
     }
 
+    public static final class MyFile {
+        public String name;
+        public long size;
+        public boolean isDir;
+        public String fid;
+        public String path;
+        public String platform;
+    }
+
+    public static List<MyFile> listMyFiles(String platform, String cookie, String fid) throws ResolveException {
+        try {
+            if (fid == null || fid.isEmpty()) fid = "0";
+            if ("quark".equals(platform) || "uc".equals(platform)) {
+                String base = "quark".equals(platform) ? "https://drive-pc.quark.cn/1/clouddrive" : "https://drive.uc.cn/1/clouddrive";
+                String ref = "quark".equals(platform) ? "https://pan.quark.cn/" : "https://drive.uc.cn/";
+                Map<String, String> h = cookieHeaders(cookie, ref);
+                String url = base + "/file/sort?pr=ucpro&fr=pc&pdir_fid=" + URLEncoder.encode(fid, "UTF-8")
+                        + "&_page=1&_size=200&_fetch_total=1&_fetch_sub_dirs=0&_sort=file_type%3Aasc%2Cupdated_at%3Adesc";
+                JSONObject obj = new JSONObject(httpGet(url, h));
+                int code = obj.optInt("code", 0);
+                if (code != 0) throw new ResolveException(obj.optString("message", "文件列表失败"));
+                JSONArray list = obj.getJSONObject("data").optJSONArray("list");
+                List<MyFile> out = new ArrayList<>();
+                if (list != null) for (int i = 0; i < list.length(); i++) {
+                    JSONObject it = list.getJSONObject(i);
+                    MyFile f = new MyFile();
+                    f.name = it.optString("file_name", "file"); f.size = it.optLong("size", 0);
+                    f.isDir = it.optBoolean("dir"); f.fid = it.optString("fid", "");
+                    f.path = fid; f.platform = platform;
+                    out.add(f);
+                }
+                return out;
+            }
+            if ("baidu".equals(platform)) {
+                Map<String, String> h = cookieHeaders(cookie, "https://pan.baidu.com/");
+                String dir = "0".equals(fid) ? "/" : fid;
+                String url = "https://pan.baidu.com/api/list?dir=" + URLEncoder.encode(dir, "UTF-8")
+                        + "&page=1&num=1000&order=name&desc=0";
+                JSONObject obj = new JSONObject(httpGet(url, h));
+                if (obj.optInt("errno", -1) != 0) throw new ResolveException("百度返回错误 " + obj.optInt("errno"));
+                JSONArray list = obj.optJSONArray("list");
+                List<MyFile> out = new ArrayList<>();
+                if (list != null) for (int i = 0; i < list.length(); i++) {
+                    JSONObject it = list.getJSONObject(i);
+                    MyFile f = new MyFile();
+                    f.name = it.optString("filename", "file"); f.size = it.optLong("size", 0);
+                    f.isDir = it.optInt("is_dir") == 1; f.fid = it.optString("fs_id", "");
+                    f.path = it.optString("path", dir); f.platform = "baidu";
+                    out.add(f);
+                }
+                return out;
+            }
+            throw new ResolveException(platform + " 暂不支持浏览账号文件，当前可用：夸克 / UC / 百度");
+        } catch (ResolveException e) { throw e; }
+        catch (Exception e) { throw new ResolveException("文件列表失败：" + e.getMessage()); }
+    }
+
+    public static List<PanFile> myFileDirect(List<MyFile> files, String cookie) throws ResolveException {
+        if (files == null || files.isEmpty()) return new ArrayList<>();
+        String platform = files.get(0).platform;
+        try {
+            if ("quark".equals(platform) || "uc".equals(platform)) {
+                String base = "quark".equals(platform) ? "https://drive-pc.quark.cn/1/clouddrive" : "https://drive.uc.cn/1/clouddrive";
+                String ref = "quark".equals(platform) ? "https://pan.quark.cn/" : "https://drive.uc.cn/";
+                StringBuilder fids = new StringBuilder("[");
+                for (int i = 0; i < files.size(); i++) {
+                    if (i > 0) fids.append(',');
+                    fids.append('"').append(files.get(i).fid).append('"');
+                }
+                fids.append(']');
+                Map<String, String> h = cookieHeaders(cookie, ref);
+                JSONObject obj = new JSONObject(httpPost(base + "/file/download?pr=ucpro&fr=pc",
+                        "{\"fids\":" + fids + "}", h));
+                if (obj.optInt("code", 0) != 0) throw new ResolveException(obj.optString("message", "取直链失败"));
+                JSONArray data = obj.optJSONArray("data");
+                List<PanFile> out = new ArrayList<>();
+                if (data != null) for (int i = 0; i < data.length(); i++) {
+                    JSONObject d = data.optJSONObject(i);
+                    if (d == null) continue;
+                    String u = d.optString("download_url", "");
+                    if (u.isEmpty()) continue;
+                    MyFile f = files.get(Math.min(i, files.size() - 1));
+                    PanFile r = new PanFile();
+                    r.name = f.name; r.size = f.size; r.url = u; r.referer = ref; r.cookie = cookie;
+                    out.add(r);
+                }
+                if (out.isEmpty()) throw new ResolveException("未取到直链（可能需会员或已失效）");
+                return out;
+            }
+            throw new ResolveException("百度账号文件直链适配中，当前可用：夸克 / UC");
+        } catch (ResolveException e) { throw e; }
+        catch (Exception e) { throw new ResolveException("取直链失败：" + e.getMessage()); }
+    }
+
     private static List<PanFile> resolveLanzou(Share s) throws Exception {
         String host = "ilanzou".equals(s.platform) ? "https://www.ilanzou.com" : "https://www.lanzoui.com";
         String page = httpGet(host + "/s/" + s.shareId, null);
