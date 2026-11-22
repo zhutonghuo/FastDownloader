@@ -69,7 +69,21 @@ public class PanActivity extends Activity {
 
         findViewById(R.id.btnParse).setOnClickListener(v -> parse());
         findViewById(R.id.btnWebLogin).setOnClickListener(v -> openLogin());
+        findViewById(R.id.btnMyFiles).setOnClickListener(v -> openMyFiles());
         list.setOnItemClickListener((p, v, pos, id) -> addTask(files.get(pos)));
+    }
+
+    private void openMyFiles() {
+        String pid = pickedPlatform();
+        if (pid == null || "github".equals(pid)) {
+            toast("请先选择网盘平台（夸克 / UC / 百度）"); return;
+        }
+        String cookie = cookieInput.getText().toString().trim();
+        if (cookie.isEmpty()) { toast("请先点「网页登录」或粘贴 Cookie"); return; }
+        Intent i = new Intent(this, MyFilesActivity.class);
+        i.putExtra(MyFilesActivity.EXTRA_PLATFORM, pid);
+        i.putExtra(MyFilesActivity.EXTRA_COOKIE, cookie);
+        startActivity(i);
     }
 
     private String hintFor(String pid) {
