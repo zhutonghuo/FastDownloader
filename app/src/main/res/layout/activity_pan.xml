@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="网盘下载"
+            android:textSize="19sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <EditText
+            android:id="@+id/panInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="粘贴网盘分享链接（可整段，自动提取提取码）"
+            android:inputType="textMultiLine"
+            android:maxLines="3"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/panPlatform"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="平台：等待识别…"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/btnWebLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:padding="14dp"
+            android:gravity="center"
+            android:text="网页登录（自动提取 Cookie）"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:background="@drawable/bg_pill_filled" />
+
+        <TextView
+            android:id="@+id/btnParse"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:padding="14dp"
+            android:gravity="center"
+            android:text="解析文件列表"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:background="@drawable/bg_pill_filled" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Cookie / Token（需登录的网盘填，GitHub 可填 Token）"
+            android:textSize="12sp" />
+
+        <EditText
+            android:id="@+id/panCookie"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="选填"
+            android:inputType="text"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/panList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:dividerHeight="1dp" />
+
+    <TextView
+        android:id="@+id/panHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp"
+        android:text="GitHub / 蓝奏云免登录；其它网盘需 Cookie。仅下载你有权获取的内容。"
+        android:textSize="11sp" />
+</LinearLayout>
