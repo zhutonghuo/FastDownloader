@@ -46,6 +46,68 @@
             android:background="?android:attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/loginTools"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:background="?attr/colorBg">
+
+        <TextView
+            android:id="@+id/btnZoomOut"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:minWidth="48dp"
+            android:text="－ 缩小"
+            android:textSize="12sp"
+            android:textColor="?attr/colorSub"
+            android:background="?android:attr/selectableItemBackground" />
+
+        <TextView
+            android:id="@+id/btnZoomIn"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:minWidth="48dp"
+            android:text="＋ 放大"
+            android:textSize="12sp"
+            android:textColor="?attr/colorSub"
+            android:background="?android:attr/selectableItemBackground" />
+
+        <TextView
+            android:id="@+id/btnZoomReset"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:minWidth="48dp"
+            android:text="复位"
+            android:textSize="12sp"
+            android:textColor="?attr/colorSub"
+            android:background="?android:attr/selectableItemBackground" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/btnClearCookie"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:minWidth="48dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:text="清除Cookie"
+            android:textSize="12sp"
+            android:textColor="?attr/colorSub"
+            android:background="?android:attr/selectableItemBackground" />
+    </LinearLayout>
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

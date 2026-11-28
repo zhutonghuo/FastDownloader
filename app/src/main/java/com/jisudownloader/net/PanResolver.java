@@ -336,6 +336,46 @@ public final class PanResolver {
         public String platform;
     }
 
+    /**
+     * 校验登录态。
+     * 返回 "ok" = 已登录；"fail" = 未登录；"unknown" = 该平台暂无校验接口或网络异常。
+     */
+    public static String verifyLogin(String platform, String cookie) {
+        if (cookie == null || cookie.trim().isEmpty()) return "fail";
+        try {
+            if ("quark".equals(platform) || "uc".equals(platform)) {
+                String base = "quark".equals(platform) ? "https://drive-pc.quark.cn/1/clouddrive" : "https://drive.uc.cn/1/clouddrive";
+                String ref = "quark".equals(platform) ? "https://pan.quark.cn/" : "https://drive.uc.cn/";
+                Map<String, String> h = cookieHeaders(cookie, ref);
+                String url = base + "/file/sort?pr=ucpro&fr=pc&pdir_fid=0&_page=1&_size=10&_fetch_total=1";
+                JSONObject obj = new JSONObject(httpGet(url, h));
+                int code = obj.has("code") ? obj.optInt("code", -1) : obj.optInt("status", -1);
+                return code == 0 ? "ok" : "fail";
+            }
+            if ("baidu".equals(platform)) {
+                Map<String, String> h = cookieHeaders(cookie, "https://pan.baidu.com/");
+                String url = "https://pan.baidu.com/api/list?dir=%2F&page=1&num=10&order=name&desc=0";
+                JSONObject obj = new JSONObject(httpGet(url, h));
+                return obj.optInt("errno", -1) == 0 ? "ok" : "fail";
+            }
+            if ("github".equals(platform)) {
+                Map<String, String> h = new LinkedHashMap<>();
+                h.put("Cookie", cookie);
+                h.put("Accept", "application/vnd.github+json");
+                h.put("User-Agent", UA);
+                JSONObject obj = new JSONObject(httpGet("https://api.github.com/user", h));
+                return obj.optString("login", "").isEmpty() ? "fail" : "ok";
+            }
+        } catch (ResolveException e) {
+            String m = e.getMessage() == null ? "" : e.getMessage();
+            if (m.contains("401") || m.contains("403")) return "fail";   // 未登录/无权限
+            return "unknown";
+        } catch (Exception e) {
+            return "unknown";
+        }
+        return "unknown";
+    }
+
     public static List<MyFile> listMyFiles(String platform, String cookie, String fid) throws ResolveException {
         try {
             if (fid == null || fid.isEmpty()) fid = "0";

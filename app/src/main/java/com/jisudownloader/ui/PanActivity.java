@@ -92,6 +92,22 @@ public class PanActivity extends Activity {
         }
     }
 
+    private void clearCookies(String pid) {
+        // 清掉 WebView 里的 Cookie 与本机保存的登录态
+        try {
+            android.webkit.CookieManager cm = android.webkit.CookieManager.getInstance();
+            if (cm != null) {
+                cm.removeAllCookies(null);
+                cm.removeSessionCookies(null);
+                cm.flush();
+            }
+        } catch (Exception ignored) {
+        }
+        AccountStore.logout(this, pid);
+        ((BaseAdapter) accounts.getAdapter()).notifyDataSetChanged();
+        toast("已清除 " + pid + " 的 Cookie");
+    }
+
     private void openMyFiles(String pid) {
         String cookie = AccountStore.get(this, pid);
         if (cookie.isEmpty()) { toast("请先登录"); return; }
@@ -193,10 +209,15 @@ public class PanActivity extends Activity {
                 btn.setId(R.id.acctBtn);
                 btn.setTextSize(13);
                 btn.setPadding(14, 6, 14, 6);
-                row.addView(tv); row.addView(btn);
+                TextView clr = new TextView(PanActivity.this);
+                clr.setId(R.id.acctClear);
+                clr.setTextSize(13);
+                clr.setPadding(10, 6, 10, 6);
+                row.addView(tv); row.addView(btn); row.addView(clr);
             }
             TextView tv = row.findViewById(R.id.acctName);
             TextView btn = row.findViewById(R.id.acctBtn);
+            TextView clr = row.findViewById(R.id.acctClear);
             final String pid = PLATFORM_IDS[i];
             boolean logged = AccountStore.isLogin(PanActivity.this, pid);
             tv.setText((logged ? "● " : "○ ") + PLATFORM_NAMES[i] + (logged ? "  · 已登录" : "  · 未登录"));
@@ -217,6 +238,9 @@ public class PanActivity extends Activity {
                     openLogin(pid, null);
                 }
             });
+            clr.setText("清除Cookie");
+            clr.setTextColor(ThemeHelper.subColor(PanActivity.this));
+            clr.setOnClickListener(v -> clearCookies(pid));
             return row;
         }
     }

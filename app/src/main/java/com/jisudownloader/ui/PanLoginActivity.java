@@ -18,22 +18,24 @@ import com.jisudownloader.util.ThemeHelper;
 public class PanLoginActivity extends Activity {
     public static final String EXTRA_PLATFORM = "platform";
     private WebView web;
+    private TextView titleLbl;
+    private int zoomSteps = 0;
     private String platform;
     private final java.util.Map<String, String> cookies = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static String loginUrl(String p) {
-        if (p == null) return "https://pan.quark.cn";
+        if (p == null) return "https://pan.quark.cn/";
         switch (p) {
-            case "quark": return "https://pan.quark.cn";
-            case "uc": return "https://drive.uc.cn";
-            case "xunlei": return "https://pan.xunlei.com";
-            case "baidu": return "https://pan.baidu.com";
-            case "c139": return "https://yun.139.com";
-            case "pan123": return "https://www.123pan.com";
-            case "pan115": return "https://115.com";
-            case "guangya": return "https://www.guangyapan.com";
-            case "ilanzou": return "https://www.ilanzou.com";
-            case "lanzou": return "https://www.lanzoui.com";
+            case "quark": return "https://pan.quark.cn/";
+            case "uc": return "https://drive.uc.cn/";
+            case "xunlei": return "https://pan.xunlei.com/login";
+            case "baidu": return "https://pan.baidu.com/login";
+            case "c139": return "https://yun.139.com/w/#/";
+            case "pan123": return "https://user.123pan.cn/centerlogin";
+            case "pan115": return "https://115.com/";
+            case "guangya": return "https://www.guangyapan.com/";
+            case "ilanzou": return "https://www.ilanzou.com/";
+            case "lanzou": return "https://www.lanzoui.com/";
             case "github": return "https://github.com/login";
             default: return "";
         }
@@ -61,6 +63,13 @@ public class PanLoginActivity extends Activity {
         s.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
         s.setRenderPriority(WebSettings.RenderPriority.HIGH);
         s.setLoadsImagesAutomatically(true);
+        // 页面缩放：允许双指缩放 + 显示缩放按钮
+        s.setSupportZoom(true);
+        s.setBuiltInZoomControls(true);
+        s.setDisplayZoomControls(true);
+        s.setUseWideViewPort(true);
+        s.setLoadWithOverviewMode(true);
+        s.setTextZoom(100);
         try { s.setDatabaseEnabled(true); } catch (Exception ignored) {}
 
         CookieManager cm = CookieManager.getInstance();
@@ -69,7 +78,7 @@ public class PanLoginActivity extends Activity {
             cm.setAcceptThirdPartyCookies(web, true);
         }
 
-        final TextView titleLbl = findViewById(R.id.loginTitle);
+        titleLbl = findViewById(R.id.loginTitle);
         final View overlay = findViewById(R.id.loadingOverlay);
         web.setWebChromeClient(new WebChromeClient() {
             @Override public void onProgressChanged(WebView v, int p) {
@@ -111,6 +120,47 @@ public class PanLoginActivity extends Activity {
 
         findViewById(R.id.btnDone).setOnClickListener(v -> finishWithCookies());
         findViewById(R.id.btnCancel).setOnClickListener(v -> finish());
+        findViewById(R.id.btnZoomIn).setOnClickListener(v -> {
+            web.zoomIn();
+            zoomSteps++;
+            showZoom("已放大");
+        });
+        findViewById(R.id.btnZoomOut).setOnClickListener(v -> {
+            if (zoomSteps > 0) {
+                web.zoomOut();
+                zoomSteps--;
+            }
+            showZoom("已缩小");
+        });
+        findViewById(R.id.btnZoomReset).setOnClickListener(v -> {
+            for (int i = 0; i < zoomSteps; i++) web.zoomOut();
+            zoomSteps = 0;
+            showZoom("已复位");
+        });
+        findViewById(R.id.btnClearCookie).setOnClickListener(v -> clearCookies());
+    }
+
+    private void showZoom(String msg) {
+        Toast.makeText(this, msg + "（缩放档位 " + (100 + zoomSteps * 20) + "%）", Toast.LENGTH_SHORT).show();
+    }
+
+    /** 清除浏览器 Cookie 与缓存，便于重新扫码登录 */
+    private void clearCookies() {
+        try {
+            CookieManager cm = CookieManager.getInstance();
+            if (cm != null) {
+                cm.removeAllCookies(null);
+                cm.removeSessionCookies(null);
+                cm.flush();
+            }
+            web.clearCache(true);
+            web.clearHistory();
+        } catch (Exception ignored) {
+        }
+        cookies.clear();
+        Toast.makeText(this, "已清除 Cookie，请重新登录", Toast.LENGTH_SHORT).show();
+        titleLbl.setText("登录 " + platform + " · Cookie 已清除，请重新登录");
+        web.loadUrl(loginUrl(platform));
     }
 
     private void collect(String url) {
@@ -142,11 +192,50 @@ public class PanLoginActivity extends Activity {
             if (sb.length() > 0) sb.append("; ");
             sb.append(e.getKey()).append('=').append(e.getValue());
         }
+        final String cookieStr = sb.toString();
+        if (cookieStr.trim().isEmpty()) {
+            Toast.makeText(this, "未获取到 Cookie，请先在网页里完成登录", Toast.LENGTH_LONG).show();
+            return;
+        }
+        titleLbl.setText("正在校验登录状态…");
+        // 真正校验一次登录态，避免"没登录也提示登录成功"
+        new Thread(() -> {
+            String state;
+            try {
+                state = com.jisudownloader.net.PanResolver.verifyLogin(platform, cookieStr);
+            } catch (Exception e) {
+                state = "unknown";
+            }
+            final String st = state;
+            runOnUiThread(() -> onVerified(cookieStr, st));
+        }, "verify-login").start();
+    }
+
+    private void onVerified(String cookieStr, String state) {
+        if ("ok".equals(state)) {
+            deliver(cookieStr, "登录成功");
+            return;
+        }
+        if ("unknown".equals(state)) {
+            deliver(cookieStr, "已保存登录状态（无法自动校验）");
+            return;
+        }
+        // fail：明确未登录
+        titleLbl.setText("未检测到登录状态");
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("未检测到登录状态")
+                .setMessage("没有检测到该网盘的有效登录态。\n\n可能的原因：还没完成登录、扫码后没有在网页里确认、或账号已退出登录。")
+                .setPositiveButton("继续登录", null)
+                .setNegativeButton("仍然保存", (d, w) -> deliver(cookieStr, "已保存登录状态"))
+                .show();
+    }
+
+    private void deliver(String cookieStr, String msg) {
         android.content.Intent out = new android.content.Intent();
-        out.putExtra("cookies", sb.toString());
+        out.putExtra("cookies", cookieStr);
         out.putExtra("platform", platform);
         setResult(RESULT_OK, out);
-        Toast.makeText(this, "已提取登录状态", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
         finish();
     }
 
