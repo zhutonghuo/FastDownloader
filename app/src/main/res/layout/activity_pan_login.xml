@@ -46,9 +46,37 @@
             android:background="?android:attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
-    <WebView
-        android:id="@+id/loginWeb"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <WebView
+            android:id="@+id/loginWeb"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:id="@+id/loadingOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="?attr/colorBg">
+
+            <ProgressBar
+                android:id="@+id/loadingSpinner"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:indeterminate="true" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="webview加载较慢，请稍等"
+                android:textSize="14sp"
+                android:textColor="?attr/colorSub" />
+        </LinearLayout>
+    </FrameLayout>
 </LinearLayout>
