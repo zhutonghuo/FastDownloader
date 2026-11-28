@@ -80,8 +80,13 @@ public class SettingsActivity extends Activity {
         themeRow = findViewById(R.id.themeRow);
         updateInfo = findViewById(R.id.updateInfo);
         findViewById(R.id.btnUpdate).setOnClickListener(v -> {
-            if (pendingUrl != null && !pendingUrl.isEmpty()) downloadAndInstall(pendingUrl);
-            else checkUpdate();
+            if (pendingUrl != null && !pendingUrl.isEmpty()) {
+                com.jisudownloader.util.UpdateChecker.savePending(this, pendingTag, pendingUrl);
+                updateInfo.setText("已返回主页，请点击更新卡片安装 " + pendingTag);
+                finish();
+            } else {
+                checkUpdate();
+            }
         });
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
@@ -540,7 +545,7 @@ public class SettingsActivity extends Activity {
         try {
             return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {
-            return "1.21";
+            return "1.22";
         }
     }
 
@@ -603,10 +608,14 @@ public class SettingsActivity extends Activity {
                 }
                 pendingUrl = assetUrl;
                 pendingTag = latestTag;
+                com.jisudownloader.util.UpdateChecker.savePending(this, latestTag, assetUrl);
                 runOnUiThread(() -> {
-                    updateInfo.setText("发现新版本：" + latestTag + "（当前 " + currentVer() + "）");
+                    updateInfo.setText("发现新版本 " + latestTag + "，已返回主页，请点击卡片更新");
+                    Toast.makeText(this, "发现新版本 " + latestTag, Toast.LENGTH_SHORT).show();
                     TextView b = findViewById(R.id.btnUpdate);
                     b.setText("下载并安装 " + latestTag);
+                    b.setEnabled(false);
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> finish(), 900);
                 });
             } catch (Exception e) {
                 final String msg = e.getMessage();
