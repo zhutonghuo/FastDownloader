@@ -94,8 +94,9 @@
             android:layout_height="1dp"
             android:layout_weight="1" />
 
+        <!-- 固定电脑版：不提供手机版切换（手机版部分网盘只显示下载APP页，无登录按钮） -->
         <TextView
-            android:id="@+id/btnDesktop"
+            android:id="@+id/lblDesktopFixed"
             android:layout_width="wrap_content"
             android:layout_height="32dp"
             android:gravity="center"
@@ -104,8 +105,7 @@
             android:paddingRight="10dp"
             android:text="电脑版"
             android:textSize="12sp"
-            android:textColor="?attr/colorSub"
-            android:background="?android:attr/selectableItemBackground" />
+            android:textColor="?attr/colorPrimary" />
 
         <TextView
             android:id="@+id/btnClearCookie"
