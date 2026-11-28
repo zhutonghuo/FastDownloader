@@ -2,4 +2,6 @@
 <resources>
     <item name="myFileName" type="id" />
     <item name="myFileCheck" type="id" />
+    <item name="acctName" type="id" />
+    <item name="acctBtn" type="id" />
 </resources>
