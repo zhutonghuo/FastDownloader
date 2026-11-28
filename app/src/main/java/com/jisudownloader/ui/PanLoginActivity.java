@@ -24,6 +24,7 @@ public class PanLoginActivity extends Activity {
     private static String loginUrl(String p) {
         if (p == null) return "https://pan.quark.cn";
         switch (p) {
+            case "quark": return "https://pan.quark.cn";
             case "uc": return "https://drive.uc.cn";
             case "xunlei": return "https://pan.xunlei.com";
             case "baidu": return "https://pan.baidu.com";
@@ -33,7 +34,8 @@ public class PanLoginActivity extends Activity {
             case "guangya": return "https://www.guangyapan.com";
             case "ilanzou": return "https://www.ilanzou.com";
             case "lanzou": return "https://www.lanzoui.com";
-            default: return "https://pan.quark.cn";
+            case "github": return "https://github.com/login";
+            default: return "";
         }
     }
 
@@ -99,7 +101,13 @@ public class PanLoginActivity extends Activity {
                 overlay.setVisibility(View.GONE);
             }
         });
-        web.loadUrl(loginUrl(platform));
+        String url = loginUrl(platform);
+        if (url.isEmpty()) {
+            Toast.makeText(this, "暂不支持 " + platform + " 的网页登录", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+        web.loadUrl(url);
 
         findViewById(R.id.btnDone).setOnClickListener(v -> finishWithCookies());
         findViewById(R.id.btnCancel).setOnClickListener(v -> finish());
@@ -121,6 +129,14 @@ public class PanLoginActivity extends Activity {
         collect(web.getUrl());
         String host = android.net.Uri.parse(web.getUrl() == null ? "" : web.getUrl()).getHost();
         if (host != null) collect("https://" + host);
+        String main = loginUrl(platform);
+        if (!main.isEmpty()) {
+            String mh = android.net.Uri.parse(main).getHost();
+            if (mh != null) {
+                collect("https://" + mh);
+                collect("https://." + mh);
+            }
+        }
         StringBuilder sb = new StringBuilder();
         for (java.util.Map.Entry<String, String> e : cookies.entrySet()) {
             if (sb.length() > 0) sb.append("; ");
