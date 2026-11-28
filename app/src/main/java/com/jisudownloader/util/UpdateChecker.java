@@ -24,6 +24,24 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public final class UpdateChecker {
+    private static final String PREF = "jisu_update";
+    private static final String KEY_TAG = "pending_tag";
+    private static final String KEY_URL = "pending_url";
+
+    public static void savePending(Activity a, String tag, String url) {
+        android.content.SharedPreferences sp = a.getSharedPreferences(PREF, android.content.Context.MODE_PRIVATE);
+        sp.edit().putString(KEY_TAG, tag).putString(KEY_URL, url).apply();
+    }
+
+    public static String[] takePending(Activity a) {
+        android.content.SharedPreferences sp = a.getSharedPreferences(PREF, android.content.Context.MODE_PRIVATE);
+        String tag = sp.getString(KEY_TAG, "");
+        String url = sp.getString(KEY_URL, "");
+        if (tag == null || tag.isEmpty() || url == null || url.isEmpty()) return null;
+        sp.edit().remove(KEY_TAG).remove(KEY_URL).apply();
+        return new String[]{tag, url};
+    }
+
     public interface Callback {
         void onResult(String tag, String apkUrl);
         void onError(String msg);
@@ -33,7 +51,7 @@ public final class UpdateChecker {
         try {
             return a.getPackageManager().getPackageInfo(a.getPackageName(), 0).versionName;
         } catch (Exception e) {
-            return "1.21";
+            return "1.22";
         }
     }
 
