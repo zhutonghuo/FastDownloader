@@ -93,12 +93,19 @@ public class MainActivity extends Activity implements TaskStore.Listener {
         View card = findViewById(R.id.updateCard);
         if (card == null) return;
         ((TextView) findViewById(R.id.updateTitle)).setText("发现新版本 " + tag);
-        ((TextView) findViewById(R.id.updateDesc)).setText("当前 v" + com.jisudownloader.util.UpdateChecker.currentVer(MainActivity.this) + " · 点击更新");
+        ((TextView) findViewById(R.id.updateDesc)).setText("当前 v" + com.jisudownloader.util.UpdateChecker.currentVer(MainActivity.this)
+                + " · 点「更新」加入下载列表，完成后可安装");
         card.setVisibility(View.VISIBLE);
         final String url = apkUrl;
-        findViewById(R.id.updateBtn).setOnClickListener(v ->
-            com.jisudownloader.util.UpdateChecker.downloadAndInstall(
-                MainActivity.this, url, (TextView) v));
+        final String tg = tag;
+        findViewById(R.id.updateBtn).setOnClickListener(v -> {
+            // 与用户手动添加下载链接一致：以普通任务形式下载，主页可看到进度/速度/大小等数值
+            boolean ok = com.jisudownloader.util.UpdateChecker.startUpdateDownload(MainActivity.this, tg, url);
+            if (ok) {
+                card.setVisibility(View.GONE);
+                adapter.notifyDataSetChanged();
+            }
+        });
     }
 
     private void checkHomeUpdate() {
@@ -379,6 +386,65 @@ public class MainActivity extends Activity implements TaskStore.Listener {
         return "*/*";
     }
 
+    // ---------- .apk 安装 ----------
+    private void installApk(Task t) {
+        File apk = t.finalFile();
+        if (apk == null || !apk.exists()) {
+            toast("安装包不存在，可能已被移动或删除");
+            return;
+        }
+        com.jisudownloader.util.UpdateChecker.install(this, apk);
+    }
+
+    // ---------- 内置预览（视频 / 文本 / 图片 / 音频） ----------
+    private void previewTask(Task t) {
+        File src = t.finalFile();
+        if (src == null || !src.exists()) {
+            toast("文件不存在，可能已被移动或删除");
+            return;
+        }
+        String cls = com.jisudownloader.util.MediaUtil.classify(t.fileName);
+        if (cls == null) {
+            toast("该类型暂不支持内置预览");
+            return;
+        }
+        final String name = t.displayName;
+        toast("正在准备预览…");
+        // 复制到应用缓存目录：避免读取公开目录需要存储权限，也避免 file:// 严格模式报错
+        new Thread(() -> {
+            File cache = new File(getCacheDir(), "preview");
+            File dst = null;
+            try {
+                File[] olds = cache.listFiles();
+                if (olds != null) for (File o : olds) o.delete();
+                if (!cache.exists()) cache.mkdirs();
+                dst = new File(cache, t.fileName);
+                try (java.io.InputStream in = new java.io.FileInputStream(src);
+                     java.io.OutputStream os = new java.io.FileOutputStream(dst)) {
+                    byte[] buf = new byte[1 << 16];
+                    int n;
+                    while ((n = in.read(buf)) > 0) os.write(buf, 0, n);
+                }
+            } catch (Exception e) {
+                final String msg = e.getMessage() == null ? "复制失败" : e.getMessage();
+                runOnUiThread(() -> toast("无法准备预览：" + msg));
+                return;
+            }
+            final File target = dst;
+            runOnUiThread(() -> {
+                Intent i = new Intent(MainActivity.this, PreviewActivity.class);
+                i.putExtra(PreviewActivity.EXTRA_PATH, target.getAbsolutePath());
+                i.putExtra(PreviewActivity.EXTRA_NAME, name);
+                i.putExtra(PreviewActivity.EXTRA_CLASS, cls);
+                try {
+                    startActivity(i);
+                } catch (Exception e) {
+                    toast("无法打开预览");
+                }
+            });
+        }, "preview-copy").start();
+    }
+
     private final class Adapter extends BaseAdapter {
 
         @Override
@@ -422,6 +488,8 @@ public class MainActivity extends Activity implements TaskStore.Listener {
         final TextView eta;
         final TextView remain;
         final TextView btnToggle;
+        final TextView btnPreview;
+        final TextView btnInstall;
         final TextView btnFolder;
         final TextView btnDelete;
         final View root;
@@ -436,6 +504,8 @@ public class MainActivity extends Activity implements TaskStore.Listener {
             eta = v.findViewById(R.id.eta);
             remain = v.findViewById(R.id.remain);
             btnToggle = v.findViewById(R.id.btnToggle);
+            btnPreview = v.findViewById(R.id.btnPreview);
+            btnInstall = v.findViewById(R.id.btnInstall);
             btnFolder = v.findViewById(R.id.btnFolder);
             btnDelete = v.findViewById(R.id.btnDelete);
         }
@@ -496,6 +566,22 @@ public class MainActivity extends Activity implements TaskStore.Listener {
 
         h.btnToggle.setText(busy || t.status == Task.QUEUED ? "暂停" : "继续");
         h.btnToggle.setTextColor(primary);
+
+        // 已完成：.apk 可安装；视频/文本/图片/音频可内置预览
+        boolean done = t.status == Task.DONE;
+        File finalFile = t.finalFile();
+        boolean fileExists = finalFile != null && finalFile.exists();
+        boolean apk = done && fileExists && com.jisudownloader.util.MediaUtil.isApk(t.fileName);
+        String previewCls = done && fileExists
+                ? com.jisudownloader.util.MediaUtil.classify(t.fileName) : null;
+
+        h.btnInstall.setVisibility(apk ? View.VISIBLE : View.GONE);
+        h.btnInstall.setText("安装");
+        h.btnInstall.setTextColor(primary);
+        h.btnPreview.setVisibility(previewCls != null ? View.VISIBLE : View.GONE);
+        h.btnPreview.setText("预览");
+        h.btnPreview.setTextColor(primary);
+
         h.btnFolder.setTextColor(sub);
         h.btnDelete.setTextColor(0xFFE05252);
 
@@ -510,6 +596,8 @@ public class MainActivity extends Activity implements TaskStore.Listener {
             adapter.notifyDataSetChanged();
         });
         h.btnFolder.setOnClickListener(v -> openFolder(t));
+        h.btnInstall.setOnClickListener(v -> installApk(t));
+        h.btnPreview.setOnClickListener(v -> previewTask(t));
         h.btnDelete.setOnClickListener(v -> new android.app.AlertDialog.Builder(MainActivity.this)
                 .setTitle("删除任务")
                 .setMessage("确定删除「" + t.displayName + "」吗？\n已下载的文件和临时分片也会一并删除，无法恢复。")

@@ -11,22 +11,35 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.MediaController;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.VideoView;
 
+import androidx.core.content.FileProvider;
+
 import com.jisudownloader.R;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 public class PreviewActivity extends Activity {
     public static final String EXTRA_PATH = "path";
     public static final String EXTRA_NAME = "name";
     public static final String EXTRA_CLASS = "cls";
 
+    private static final int MAX_TEXT = 2 * 1024 * 1024;   // 文本最多读 2MB
+
     private VideoView videoView;
     private ImageView imageView;
     private LinearLayout audioPanel;
+    private ScrollView textPanel;
+    private View mediaPanel;
+    private TextView textView;
+    private TextView statusView;
     private Button playBtn;
     private SeekBar seek;
     private TextView timeText;
@@ -52,6 +65,10 @@ public class PreviewActivity extends Activity {
         videoView = findViewById(R.id.pv_video);
         imageView = findViewById(R.id.pv_image);
         audioPanel = findViewById(R.id.pv_audio);
+        textPanel = findViewById(R.id.pv_text);
+        mediaPanel = findViewById(R.id.pv_media);
+        textView = findViewById(R.id.pv_text_body);
+        statusView = findViewById(R.id.pv_status);
         playBtn = findViewById(R.id.pv_play);
         seek = findViewById(R.id.pv_seek);
         timeText = findViewById(R.id.pv_time);
@@ -63,32 +80,81 @@ public class PreviewActivity extends Activity {
 
         File f = (path == null) ? null : new File(path);
         if (f == null || !f.exists()) {
-            timeText.setText("文件不存在或无法访问");
+            showStatus("文件不存在或无法访问");
+            return;
+        }
+
+        // 统一用 FileProvider 的 content:// URI（file:// 在 Android 7+ 会被严格模式拦截）
+        Uri uri;
+        try {
+            uri = FileProvider.getUriForFile(this, "com.jisudownloader.fileprovider", f);
+        } catch (Exception e) {
+            showStatus("无法打开该文件");
             return;
         }
 
         if ("image".equals(cls)) {
             imageView.setVisibility(View.VISIBLE);
-            imageView.setImageURI(Uri.fromFile(f));
+            try {
+                imageView.setImageURI(uri);
+            } catch (Exception e) {
+                showStatus("图片加载失败");
+            }
         } else if ("video".equals(cls)) {
             videoView.setVisibility(View.VISIBLE);
             MediaController mc = new MediaController(this);
             videoView.setMediaController(mc);
-            videoView.setVideoPath(f.getAbsolutePath());
-            videoView.setOnPreparedListener(mp -> videoView.start());
-            videoView.requestFocus();
+            try {
+                videoView.setVideoURI(uri);
+                videoView.setOnPreparedListener(mp -> videoView.start());
+                videoView.setOnErrorListener((mp, what, extra) -> {
+                    showStatus("视频播放失败");
+                    return true;
+                });
+                videoView.requestFocus();
+            } catch (Exception e) {
+                showStatus("视频播放失败");
+            }
         } else if ("audio".equals(cls)) {
             audioPanel.setVisibility(View.VISIBLE);
-            setupAudio(f.getAbsolutePath());
+            setupAudio(uri);
+        } else if ("text".equals(cls)) {
+            if (mediaPanel != null) mediaPanel.setVisibility(View.GONE);
+            textPanel.setVisibility(View.VISIBLE);
+            showText(f);
         } else {
-            timeText.setText("该类型暂不支持内置预览");
+            showStatus("该类型暂不支持内置预览");
         }
     }
 
-    private void setupAudio(String path) {
+    private void showStatus(String msg) {
+        if (statusView == null) return;
+        statusView.setText(msg);
+        statusView.setVisibility(View.VISIBLE);
+    }
+
+    private void showText(File f) {
+        try (InputStream in = new FileInputStream(f)) {
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            int read = 0;
+            while ((n = in.read(buf)) > 0 && read < MAX_TEXT) {
+                bo.write(buf, 0, n);
+                read += n;
+            }
+            String s = new String(bo.toByteArray(), StandardCharsets.UTF_8);
+            if (s.length() > 400000) s = s.substring(0, 400000) + "\n\n……（内容过长，已截断）";
+            textView.setText(s.isEmpty() ? "（空文件）" : s);
+        } catch (Exception e) {
+            textView.setText("读取失败：" + (e.getMessage() == null ? "" : e.getMessage()));
+        }
+    }
+
+    private void setupAudio(Uri uri) {
         try {
             player = new MediaPlayer();
-            player.setDataSource(path);
+            player.setDataSource(this, uri);
             player.setOnPreparedListener(mp -> {
                 prepared = true;
                 seek.setMax(mp.getDuration());

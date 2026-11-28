@@ -11,6 +11,10 @@ import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
 
+import com.jisudownloader.model.Task;
+import com.jisudownloader.model.TaskStore;
+import com.jisudownloader.service.DownloadService;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -51,7 +55,7 @@ public final class UpdateChecker {
         try {
             return a.getPackageManager().getPackageInfo(a.getPackageName(), 0).versionName;
         } catch (Exception e) {
-            return "1.31";
+            return "1.32";
         }
     }
 
@@ -168,6 +172,68 @@ public final class UpdateChecker {
                 });
             }
         }, "update-dl").start();
+    }
+
+    /**
+     * 以「普通下载任务」的方式开始下载新版本：
+     * 任务会出现在主页下载列表里，和用户手动添加的链接一样显示进度、速度、大小、线程数等数值。
+     * 下载完成后任务行会出现「安装」按钮，由用户点击安装。
+     */
+    public static boolean startUpdateDownload(Activity a, String tag, String url) {
+        if (url == null || url.trim().isEmpty()) {
+            Toast.makeText(a, "下载地址无效", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        url = url.trim();
+        // 同一个安装包不要重复入队
+        for (Task old : TaskStore.all()) {
+            if (old.source != null && old.source.equals(url) && old.status != Task.ERROR) {
+                Toast.makeText(a, "该版本已在下载列表中", Toast.LENGTH_SHORT).show();
+                return false;
+            }
+        }
+        try {
+            Task t = Task.fromSource(url, Prefs.threads());
+            String ver = (tag == null ? "" : tag).replace("v", "").trim();
+            t.fileName = "极速下载器_" + (ver.isEmpty() ? "new" : ver) + ".apk";
+            t.displayName = "极速下载器 " + (tag == null ? "新版本" : tag) + " 安装包";
+            t.dirPath = updateDir(a).getAbsolutePath();
+            t.targetTreeUri = "";
+            t.total = -1;
+            t.downloaded = 0;
+            t.status = Task.QUEUED;
+            TaskStore.add(t);
+            DownloadService.pump(a.getApplicationContext());
+            Toast.makeText(a, "已加入下载列表：" + t.displayName, Toast.LENGTH_SHORT).show();
+            return true;
+        } catch (Exception e) {
+            Toast.makeText(a, "无法开始下载：" + (e.getMessage() == null ? "未知错误" : e.getMessage()),
+                    Toast.LENGTH_SHORT).show();
+            return false;
+        }
+    }
+
+    /** 安装包存放目录（应用专属外部目录，无需存储权限）。 */
+    public static File updateDir(Activity a) {
+        File base = a.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+        File dir = new File(base != null ? base : a.getFilesDir(), "updates");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    /** 找到已完成的 .apk 任务对应的安装包文件。 */
+    public static File apkFileOf(Task t) {
+        if (t == null || t.fileName == null) return null;
+        File f = t.finalFile();
+        if (f != null && f.exists()) return f;
+        File alt = new File(updateDirFrom(t), t.fileName);
+        if (alt.exists()) return alt;
+        return null;
+    }
+
+    private static File updateDirFrom(Task t) {
+        File d = new File(t.dirPath);
+        return d;
     }
 
     public static void install(Activity a, File apk) {
