@@ -70,7 +70,8 @@ public class PanLoginActivity extends Activity {
         s.setJavaScriptCanOpenWindowsAutomatically(true);
         s.setSupportMultipleWindows(true);
         s.setUserAgentString(UA_DESKTOP);
-        s.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+        // 登录页必须实时，不能优先用缓存（缓存的旧登录页会导致扫码/登录态异常）
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setRenderPriority(WebSettings.RenderPriority.HIGH);
         s.setLoadsImagesAutomatically(true);
         // 页面缩放：允许双指缩放 + 显示缩放按钮
@@ -92,14 +93,65 @@ public class PanLoginActivity extends Activity {
         final View overlay = findViewById(R.id.loadingOverlay);
         web.setWebChromeClient(new WebChromeClient() {
             @Override public void onProgressChanged(WebView v, int p) {
-                titleLbl.setText("登录 " + platform + " · 加载中 " + p + "%");
+                if (titleLbl != null && alive()) titleLbl.setText("登录 " + platform + " · 加载中 " + p + "%");
             }
             @Override public boolean onCreateWindow(WebView v, boolean dialog, boolean userGesture,
                                                     android.os.Message resultMsg) {
-                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
-                transport.setWebView(v);
-                resultMsg.sendToTarget();
-                return true;
+                // 关键：网盘登录常有 window.open 弹窗（扫码 / 第三方授权）。
+                // 复用主 WebView（transport.setWebView(v)）会造成重入崩溃，是常见闪退源。
+                // 这里改为弹出一个独立的临时 WebView 承载，关闭时销毁。
+                try {
+                    final android.app.Dialog pop = new android.app.Dialog(PanLoginActivity.this);
+                    final WebView pv = new WebView(PanLoginActivity.this);
+                    WebSettings ps = pv.getSettings();
+                    ps.setJavaScriptEnabled(true);
+                    ps.setDomStorageEnabled(true);
+                    ps.setUserAgentString(UA_DESKTOP); // 弹窗同样强制电脑版
+                    ps.setUseWideViewPort(true);
+                    ps.setLoadWithOverviewMode(true);
+                    ps.setSupportZoom(true);
+                    ps.setBuiltInZoomControls(true);
+                    ps.setDisplayZoomControls(true);
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                        try { CookieManager.getInstance().setAcceptThirdPartyCookies(pv, true); } catch (Exception ignored) {}
+                    }
+                    pv.setWebViewClient(new WebViewClient() {
+                        @Override public boolean shouldOverrideUrlLoading(WebView w, String url) {
+                            if (url != null && (url.startsWith("http://") || url.startsWith("https://"))) {
+                                w.loadUrl(url);
+                                return true;
+                            }
+                            return false;
+                        }
+                        @Override public void onPageFinished(WebView w, String url) { collect(url); }
+                    });
+                    pv.setWebChromeClient(new WebChromeClient() {
+                        @Override public void onCloseWindow(WebView w) {
+                            try { pop.dismiss(); } catch (Exception ignored) {}
+                        }
+                    });
+                    pop.setContentView(pv);
+                    int dw = (int) (getResources().getDisplayMetrics().widthPixels * 0.92);
+                    int dh = (int) (getResources().getDisplayMetrics().heightPixels * 0.82);
+                    android.view.Window win = pop.getWindow();
+                    if (win != null) win.setLayout(dw, dh);
+                    pop.setOnDismissListener(d -> {
+                        try {
+                            pv.stopLoading();
+                            pv.setWebViewClient(null);
+                            pv.setWebChromeClient(null);
+                            pv.destroy();
+                        } catch (Exception ignored) {}
+                    });
+                    pop.show();
+                    WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                    transport.setWebView(pv);
+                    resultMsg.sendToTarget();
+                    return true;
+                } catch (Throwable t) {
+                    // 兜底：创建弹窗失败就放弃这次 window.open，绝不让登录页崩掉
+                    return true;
+                }
             }
         });
         web.setWebViewClient(new WebViewClient() {
@@ -116,6 +168,7 @@ public class PanLoginActivity extends Activity {
             }
             @Override public void onPageFinished(WebView v, String url) {
                 collect(url);
+                if (!alive()) return;
                 titleLbl.setText("登录 " + platform + " · 完成后点右上角");
                 overlay.setVisibility(View.GONE);
             }
@@ -224,11 +277,14 @@ public class PanLoginActivity extends Activity {
                 state = "unknown";
             }
             final String st = state;
-            runOnUiThread(() -> onVerified(cookieStr, st));
+            runOnUiThread(() -> {
+                if (alive()) onVerified(cookieStr, st);
+            });
         }, "verify-login").start();
     }
 
     private void onVerified(String cookieStr, String state) {
+        if (!alive()) return;
         if ("ok".equals(state)) {
             deliver(cookieStr, "登录成功");
             return;
@@ -253,6 +309,7 @@ public class PanLoginActivity extends Activity {
     }
 
     private void deliver(String cookieStr, String msg) {
+        if (!alive()) return;
         android.content.Intent out = new android.content.Intent();
         out.putExtra("cookies", cookieStr);
         out.putExtra("platform", platform);
@@ -262,7 +319,29 @@ public class PanLoginActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
-        if (web.canGoBack()) web.goBack();
+        if (web != null && web.canGoBack()) web.goBack();
         else super.onBackPressed();
+    }
+
+    /** Activity 销毁时正确释放 WebView，避免渲染进程残留导致闪退/内存泄漏 */
+    @Override protected void onDestroy() {
+        try {
+            if (web != null) {
+                web.stopLoading();
+                web.setWebViewClient(null);
+                web.setWebChromeClient(null);
+                android.view.ViewParent p = web.getParent();
+                if (p instanceof android.view.ViewGroup) ((android.view.ViewGroup) p).removeView(web);
+                web.destroy();
+                web = null;
+            }
+        } catch (Throwable ignored) {
+        }
+        super.onDestroy();
+    }
+
+    /** UI 回调前检查 Activity 是否还活着，避免销毁后异步回调操作已释放的控件 */
+    private boolean alive() {
+        return !isFinishing() && !isDestroyed();
     }
 }

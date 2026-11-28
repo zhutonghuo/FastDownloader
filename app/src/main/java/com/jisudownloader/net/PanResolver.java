@@ -159,10 +159,15 @@ public final class PanResolver {
     public static Share parse(String text) { return parse(text, null); }
 
     private static String httpGet(String url, Map<String, String> headers) throws Exception {
+        return httpGet(url, headers, 15000, 20000);
+    }
+
+    /** 可指定超时的 GET（登录校验用短超时，避免慢网下长时间等待） */
+    private static String httpGet(String url, Map<String, String> headers, int connectMs, int readMs) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setRequestMethod("GET");
-        c.setConnectTimeout(15000);
-        c.setReadTimeout(20000);
+        c.setConnectTimeout(connectMs);
+        c.setReadTimeout(readMs);
         c.setRequestProperty("User-Agent", UA);
         c.setRequestProperty("Accept", "application/json, text/plain, */*");
         if (headers != null) for (Map.Entry<String, String> e : headers.entrySet()) c.setRequestProperty(e.getKey(), e.getValue());
@@ -385,16 +390,24 @@ public final class PanResolver {
      */
     public static String verifyLogin(String platform, String cookie) {
         if (cookie == null || cookie.trim().isEmpty()) return "fail";
-        String md = mainDomain(platform);
+        boolean hintOk = hasLoginCookie(platform, cookie);
 
-        // 1) 主域名探测：被重定向到登录/授权页 => 明确未登录
+        // 1) 先走平台接口（最强信号，通常 1 次请求即可判定）。
+        //    重要：不要在接口前做主域 GET 探测——那会下载整个首页（12s+15s 超时），
+        //    再叠加接口超时导致「点完成登录后要等近一分钟」。
+        String api = verifyByApi(platform, cookie, hintOk);
+        if (api != null) return api;
+
+        // 2) 接口无结论时（无适配接口 / 403 风控 / 网络异常），才做主域探测兜底。
+        //    用 HEAD + 短超时，只跳转判定，不下载页面内容。
+        String md = mainDomain(platform);
         if (!md.isEmpty()) {
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL("https://" + md + "/").openConnection();
-                c.setRequestMethod("GET");
+                c.setRequestMethod("HEAD");
                 c.setInstanceFollowRedirects(true);
-                c.setConnectTimeout(12000);
-                c.setReadTimeout(15000);
+                c.setConnectTimeout(4000);
+                c.setReadTimeout(5000);
                 c.setRequestProperty("User-Agent", UA);
                 c.setRequestProperty("Cookie", cookie);
                 int rc = c.getResponseCode();
@@ -407,8 +420,11 @@ public final class PanResolver {
                 // 网络异常不判定
             }
         }
+        return hintOk ? "ok" : "unknown";
+    }
 
-        boolean hintOk = hasLoginCookie(platform, cookie);
+    /** 平台接口校验；返回 null 表示无适配接口或需主域兜底。 */
+    private static String verifyByApi(String platform, String cookie, boolean hintOk) {
         try {
             // 注意：平台接口的 Referer 必须用其自身域名（pan.quark.cn / drive.uc.cn / pan.baidu.com），
             // 用主域名会被网关判为跨域非法请求（403 Invalid CORS request）
@@ -417,7 +433,7 @@ public final class PanResolver {
                 String ref = "quark".equals(platform) ? "https://pan.quark.cn/" : "https://drive.uc.cn/";
                 Map<String, String> h = cookieHeaders(cookie, ref);
                 String url = base + "/file/sort?pr=ucpro&fr=pc&pdir_fid=0&_page=1&_size=10&_fetch_total=1&_fetch_sub_dirs=0";
-                JSONObject obj = new JSONObject(httpGet(url, h));
+                JSONObject obj = new JSONObject(httpGet(url, h, 6000, 8000));
                 int code = obj.has("code") ? obj.optInt("code", -1) : obj.optInt("status", -1);
                 if (code == 0) return "ok";
                 // 有登录标志 cookie 却调不通，多半是风控/参数问题，不误判未登录
@@ -426,7 +442,7 @@ public final class PanResolver {
             if ("baidu".equals(platform)) {
                 Map<String, String> h = cookieHeaders(cookie, "https://pan.baidu.com/");
                 String url = "https://pan.baidu.com/api/list?dir=%2F&page=1&num=10&order=name&desc=0";
-                JSONObject obj = new JSONObject(httpGet(url, h));
+                JSONObject obj = new JSONObject(httpGet(url, h, 6000, 8000));
                 if (obj.optInt("errno", -1) == 0) return "ok";
                 return hintOk ? "ok" : "fail";
             }
@@ -435,18 +451,18 @@ public final class PanResolver {
                 h.put("Cookie", cookie);
                 h.put("Accept", "application/vnd.github+json");
                 h.put("User-Agent", UA);
-                JSONObject obj = new JSONObject(httpGet("https://api.github.com/user", h));
+                JSONObject obj = new JSONObject(httpGet("https://api.github.com/user", h, 6000, 8000));
                 return obj.optString("login", "").isEmpty() ? "fail" : "ok";
             }
         } catch (ResolveException e) {
             String m = e.getMessage() == null ? "" : e.getMessage();
-            if (m.contains("401")) return "fail";        // 明确未登录
-            // 403 多为网关跨域/风控拦截，不能当未登录
-            return hintOk ? "ok" : "unknown";
+            if (m.contains("401")) return "fail";     // 明确未登录（401 优先于标志 cookie）
+            // 403 / 其它：让主域探测兜底，不直接判未登录
+            return null;
         } catch (Exception e) {
-            return hintOk ? "ok" : "unknown";
+            return null;
         }
-        return hintOk ? "ok" : "unknown";
+        return null; // 该平台暂无接口适配
     }
 
     public static List<MyFile> listMyFiles(String platform, String cookie, String fid) throws ResolveException {
