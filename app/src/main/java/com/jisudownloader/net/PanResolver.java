@@ -33,6 +33,9 @@ public final class PanResolver {
         public String url;
         public String referer;
         public String cookie;
+        public String fid;
+        public String share_fid_token;
+        public String stoken;
     }
 
     public static final class ResolveException extends Exception {
@@ -243,7 +246,10 @@ public final class PanResolver {
             PanFile f = new PanFile();
             f.name = it.optString("file_name", "file"); f.size = it.optLong("size", 0);
             String token = it.optString("share_fid_token", "");
-            f.cookie = it.optString("fid", "") + "|" + token + "|" + sid + "|" + stoken + "|" + referer;
+            f.fid = it.optString("fid", "");
+            f.share_fid_token = token;
+            f.stoken = stoken;
+            f.cookie = f.fid + "|" + token + "|" + sid + "|" + stoken + "|" + referer;
             f.url = ""; f.referer = referer;
             out.add(f);
         }
@@ -292,6 +298,33 @@ public final class PanResolver {
         }
         if (out.isEmpty()) throw new ResolveException("分享目录中没有文件");
         return out;
+    }
+
+    public static void saveToMyDrive(Share share, List<PanFile> files, String cookie) throws ResolveException {
+        String p = share.platform;
+        try {
+            if ("quark".equals(p) || "uc".equals(p)) {
+                String base = "quark".equals(p) ? "https://drive-pc.quark.cn/1/clouddrive" : "https://drive.uc.cn/1/clouddrive";
+                String ref = "quark".equals(p) ? "https://pan.quark.cn/" : "https://drive.uc.cn/";
+                StringBuilder fids = new StringBuilder("["), tokens = new StringBuilder("[");
+                for (int i = 0; i < files.size(); i++) {
+                    if (i > 0) { fids.append(','); tokens.append(','); }
+                    fids.append('"').append(files.get(i).fid).append('"');
+                    tokens.append('"').append(files.get(i).share_fid_token).append('"');
+                }
+                fids.append(']'); tokens.append(']');
+                String stoken = files.isEmpty() ? "" : files.get(0).stoken;
+                String body = "{\"fid_list\":" + fids + ",\"token_list\":" + tokens
+                        + ",\"pwd_id\":\"" + share.shareId + "\",\"stoken\":\"" + stoken
+                        + "\",\"pdir_fid\":\"0\"}";
+                Map<String, String> h = cookieHeaders(cookie, ref);
+                JSONObject obj = new JSONObject(httpPost(base + "/share/sharepage/save?pr=ucpro&fr=pc", body, h));
+                if (obj.optInt("code", 0) != 0) throw new ResolveException(obj.optString("message", "转存失败（可能需会员或空间不足）"));
+                return;
+            }
+            throw new ResolveException(p + " 转存接口适配中，可直接下载");
+        } catch (ResolveException e) { throw e; }
+        catch (Exception e) { throw new ResolveException("转存失败：" + e.getMessage()); }
     }
 
     public static final class MyFile {
