@@ -396,10 +396,11 @@ public final class PanResolver {
                 c.setConnectTimeout(12000);
                 c.setReadTimeout(15000);
                 c.setRequestProperty("User-Agent", UA);
+                c.setRequestProperty("Cookie", cookie);
                 int rc = c.getResponseCode();
                 String finalUrl = c.getURL().toString().toLowerCase(Locale.US);
                 c.disconnect();
-                if (rc == 401 || rc == 403) return "fail";
+                if (rc == 401) return "fail";
                 if (finalUrl.contains("/login") || finalUrl.contains("/signin")
                         || finalUrl.contains("passport.") || finalUrl.contains("/authorize")) return "fail";
             } catch (Exception e) {
@@ -409,20 +410,25 @@ public final class PanResolver {
 
         boolean hintOk = hasLoginCookie(platform, cookie);
         try {
+            // 注意：平台接口的 Referer 必须用其自身域名（pan.quark.cn / drive.uc.cn / pan.baidu.com），
+            // 用主域名会被网关判为跨域非法请求（403 Invalid CORS request）
             if ("quark".equals(platform) || "uc".equals(platform)) {
                 String base = "quark".equals(platform) ? "https://drive-pc.quark.cn/1/clouddrive" : "https://drive.uc.cn/1/clouddrive";
-                String ref = "https://" + (md.isEmpty() ? "quark.cn" : md) + "/";
+                String ref = "quark".equals(platform) ? "https://pan.quark.cn/" : "https://drive.uc.cn/";
                 Map<String, String> h = cookieHeaders(cookie, ref);
-                String url = base + "/file/sort?pr=ucpro&fr=pc&pdir_fid=0&_page=1&_size=10&_fetch_total=1";
+                String url = base + "/file/sort?pr=ucpro&fr=pc&pdir_fid=0&_page=1&_size=10&_fetch_total=1&_fetch_sub_dirs=0";
                 JSONObject obj = new JSONObject(httpGet(url, h));
                 int code = obj.has("code") ? obj.optInt("code", -1) : obj.optInt("status", -1);
-                return code == 0 ? "ok" : "fail";
+                if (code == 0) return "ok";
+                // 有登录标志 cookie 却调不通，多半是风控/参数问题，不误判未登录
+                return hintOk ? "ok" : "fail";
             }
             if ("baidu".equals(platform)) {
-                Map<String, String> h = cookieHeaders(cookie, "https://" + (md.isEmpty() ? "baidu.com" : md) + "/");
+                Map<String, String> h = cookieHeaders(cookie, "https://pan.baidu.com/");
                 String url = "https://pan.baidu.com/api/list?dir=%2F&page=1&num=10&order=name&desc=0";
                 JSONObject obj = new JSONObject(httpGet(url, h));
-                return obj.optInt("errno", -1) == 0 ? "ok" : "fail";
+                if (obj.optInt("errno", -1) == 0) return "ok";
+                return hintOk ? "ok" : "fail";
             }
             if ("github".equals(platform)) {
                 Map<String, String> h = new LinkedHashMap<>();
@@ -434,7 +440,8 @@ public final class PanResolver {
             }
         } catch (ResolveException e) {
             String m = e.getMessage() == null ? "" : e.getMessage();
-            if (m.contains("401") || m.contains("403")) return "fail";   // 未登录/无权限
+            if (m.contains("401")) return "fail";        // 明确未登录
+            // 403 多为网关跨域/风控拦截，不能当未登录
             return hintOk ? "ok" : "unknown";
         } catch (Exception e) {
             return hintOk ? "ok" : "unknown";

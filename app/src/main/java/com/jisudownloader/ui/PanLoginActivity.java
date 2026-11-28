@@ -231,7 +231,12 @@ public class PanLoginActivity extends Activity {
         titleLbl.setText("未检测到登录状态");
         new android.app.AlertDialog.Builder(this)
                 .setTitle("未检测到登录状态")
-                .setMessage("没有检测到该网盘的有效登录态。\n\n可能的原因：还没完成登录、扫码后没有在网页里确认、或账号已退出登录。")
+                .setMessage("没有检测到该网盘的有效登录态。\n\n"
+                        + "可能的原因：\n"
+                        + "· 还没在网页里完成登录（扫码后需要在网页上确认）\n"
+                        + "· 账号已退出登录\n"
+                        + "· 接口临时受限（风控），但 Cookie 本身可能仍然是有效的\n\n"
+                        + "可以选「仍然保存」直接使用，或点顶部「清除Cookie」后重新登录。")
                 .setPositiveButton("继续登录", null)
                 .setNegativeButton("仍然保存", (d, w) -> deliver(cookieStr, "已保存登录状态"))
                 .show();
