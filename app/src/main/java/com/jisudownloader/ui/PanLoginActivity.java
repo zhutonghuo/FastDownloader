@@ -201,6 +201,49 @@ public class PanLoginActivity extends Activity {
             showZoom("已复位");
         });
         findViewById(R.id.btnClearCookie).setOnClickListener(v -> clearCookies());
+        findViewById(R.id.btnManualCookie).setOnClickListener(v -> manualCookie());
+    }
+
+    /** 手动粘贴 Cookie：从浏览器开发者工具复制该站 Cookie 整段，直接校验保存 */
+    private void manualCookie() {
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        input.setLines(6);
+        input.setGravity(android.view.Gravity.TOP | android.view.Gravity.START);
+        input.setHint("key=value; key2=value2\n\nF12 → 网络 → 点该站请求 → 标头 → 请求标头 → Cookie，整行复制");
+        input.setTextSize(13);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("手动输入 Cookie · " + platform)
+                .setView(input)
+                .setPositiveButton("校验并保存", (d, w) -> {
+                    String raw = input.getText().toString().trim();
+                    if (raw.isEmpty()) {
+                        Toast.makeText(this, "Cookie 为空", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (raw.toLowerCase().startsWith("cookie:")) raw = raw.substring(7).trim();
+                    java.util.Map<String, String> parts = new java.util.LinkedHashMap<>();
+                    for (String item : raw.replace("\n", ";").split(";")) {
+                        int i = item.indexOf('=');
+                        if (i > 0) {
+                            String k = item.substring(0, i).trim();
+                            String v = item.substring(i + 1).trim();
+                            if (!k.isEmpty() && !v.isEmpty()) parts.put(k, v);
+                        }
+                    }
+                    if (parts.isEmpty()) {
+                        Toast.makeText(this, "格式不对，请粘贴 key=value 形式", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    StringBuilder sb = new StringBuilder();
+                    for (java.util.Map.Entry<String, String> e : parts.entrySet()) {
+                        if (sb.length() > 0) sb.append("; ");
+                        sb.append(e.getKey()).append('=').append(e.getValue());
+                    }
+                    finishWithCookie(sb.toString());
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void showZoom(String msg) {
@@ -264,9 +307,14 @@ public class PanLoginActivity extends Activity {
         }
         final String cookieStr = sb.toString();
         if (cookieStr.trim().isEmpty()) {
-            Toast.makeText(this, "未获取到 Cookie，请先在网页里完成登录", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "未获取到 Cookie，请先登录或点「手动输入」", Toast.LENGTH_LONG).show();
             return;
         }
+        finishWithCookie(cookieStr);
+    }
+
+    /** 统一校验入口：自动提取和手动输入都走这里 */
+    private void finishWithCookie(String cookieStr) {
         titleLbl.setText("正在校验登录状态…");
         // 真正校验一次登录态，避免"没登录也提示登录成功"
         new Thread(() -> {
