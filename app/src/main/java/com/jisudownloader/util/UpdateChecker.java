@@ -51,7 +51,7 @@ public final class UpdateChecker {
         try {
             return a.getPackageManager().getPackageInfo(a.getPackageName(), 0).versionName;
         } catch (Exception e) {
-            return "1.22";
+            return "1.23";
         }
     }
 
