@@ -18,6 +18,7 @@ import com.jisudownloader.util.ThemeHelper;
 public class PanLoginActivity extends Activity {
     public static final String EXTRA_PLATFORM = "platform";
     private WebView web;
+    private String platform;
     private final java.util.Map<String, String> cookies = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static String loginUrl(String p) {
@@ -45,7 +46,7 @@ public class PanLoginActivity extends Activity {
         View header = findViewById(R.id.header);
         header.setBackgroundColor(ThemeHelper.primary(this));
 
-        String platform = getIntent().getStringExtra(EXTRA_PLATFORM);
+        platform = getIntent().getStringExtra(EXTRA_PLATFORM);
         ((TextView) findViewById(R.id.loginTitle)).setText("登录 " + platform + " · 完成后点右上角");
 
         web = findViewById(R.id.loginWeb);
@@ -127,6 +128,7 @@ public class PanLoginActivity extends Activity {
         }
         android.content.Intent out = new android.content.Intent();
         out.putExtra("cookies", sb.toString());
+        out.putExtra("platform", platform);
         setResult(RESULT_OK, out);
         Toast.makeText(this, "已提取登录状态", Toast.LENGTH_SHORT).show();
         finish();
