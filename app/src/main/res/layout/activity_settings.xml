@@ -457,7 +457,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:padding="16dp"
-                android:text="极速下载器 v1.22"
+                android:text="极速下载器 v1.23"
                 android:textSize="11sp" />
         </LinearLayout>
     </ScrollView>
