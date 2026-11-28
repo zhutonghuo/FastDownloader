@@ -187,6 +187,13 @@ public class PanLoginActivity extends Activity {
                 collect("https://." + mh);
             }
         }
+        // 主域名：登录态 Cookie 常挂在主域上（如 .quark.cn / .uc.cn），必须一并收集
+        String md = com.jisudownloader.net.PanResolver.mainDomain(platform);
+        if (!md.isEmpty()) {
+            collect("https://" + md + "/");
+            collect("https://." + md);
+            collect("https://www." + md + "/");
+        }
         StringBuilder sb = new StringBuilder();
         for (java.util.Map.Entry<String, String> e : cookies.entrySet()) {
             if (sb.length() > 0) sb.append("; ");

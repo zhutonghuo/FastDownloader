@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,6 +44,48 @@ public final class PanResolver {
     }
 
     private static final String UA = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36";
+
+    /** 主域名：登录态 Cookie 常挂在主域上，提取/校验都要覆盖主域而不是 pan.* 子域 */
+    public static final Map<String, String> MAIN_DOMAINS = new LinkedHashMap<>();
+    /** 各平台在主域名下的登录标志 Cookie */
+    public static final Map<String, String[]> LOGIN_COOKIE_HINTS = new LinkedHashMap<>();
+
+    static {
+        MAIN_DOMAINS.put("quark", "quark.cn");
+        MAIN_DOMAINS.put("uc", "uc.cn");
+        MAIN_DOMAINS.put("xunlei", "xunlei.com");
+        MAIN_DOMAINS.put("baidu", "baidu.com");
+        MAIN_DOMAINS.put("c139", "139.com");
+        MAIN_DOMAINS.put("pan123", "123pan.cn");
+        MAIN_DOMAINS.put("pan115", "115.com");
+        MAIN_DOMAINS.put("guangya", "guangyapan.com");
+        MAIN_DOMAINS.put("ilanzou", "ilanzou.com");
+        MAIN_DOMAINS.put("lanzou", "lanzoui.com");
+        MAIN_DOMAINS.put("github", "github.com");
+
+        LOGIN_COOKIE_HINTS.put("quark", new String[]{"__pus", "__puus"});
+        LOGIN_COOKIE_HINTS.put("uc", new String[]{"__pus", "__puus"});
+        LOGIN_COOKIE_HINTS.put("baidu", new String[]{"BDUSS", "STOKEN"});
+        LOGIN_COOKIE_HINTS.put("pan115", new String[]{"UID", "CID"});
+        LOGIN_COOKIE_HINTS.put("github", new String[]{"user_session", "logged_in"});
+    }
+
+    public static String mainDomain(String platform) {
+        String d = MAIN_DOMAINS.get(platform);
+        return d == null ? "" : d;
+    }
+
+    public static boolean hasLoginCookie(String platform, String cookie) {
+        String[] hints = LOGIN_COOKIE_HINTS.get(platform);
+        if (hints == null || cookie == null) return false;
+        java.util.Set<String> names = new java.util.HashSet<>();
+        for (String part : cookie.split(";")) {
+            int i = part.indexOf('=');
+            if (i > 0) names.add(part.trim().substring(0, i));
+        }
+        for (String h : hints) if (names.contains(h)) return true;
+        return false;
+    }
     private static final Pattern URL_RE = Pattern.compile("https?://[^\\s，。；;)）\\]\"']+");
     private static final Pattern PWD_URL = Pattern.compile("[?&](?:pwd|password|passcode|pass)=([A-Za-z0-9]{4,8})", Pattern.CASE_INSENSITIVE);
     private static final Pattern PWD_TEXT = Pattern.compile("(?:提取码|访问码|密码)[：:\\s]*([A-Za-z0-9]{4,8})");
@@ -342,10 +385,33 @@ public final class PanResolver {
      */
     public static String verifyLogin(String platform, String cookie) {
         if (cookie == null || cookie.trim().isEmpty()) return "fail";
+        String md = mainDomain(platform);
+
+        // 1) 主域名探测：被重定向到登录/授权页 => 明确未登录
+        if (!md.isEmpty()) {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL("https://" + md + "/").openConnection();
+                c.setRequestMethod("GET");
+                c.setInstanceFollowRedirects(true);
+                c.setConnectTimeout(12000);
+                c.setReadTimeout(15000);
+                c.setRequestProperty("User-Agent", UA);
+                int rc = c.getResponseCode();
+                String finalUrl = c.getURL().toString().toLowerCase(Locale.US);
+                c.disconnect();
+                if (rc == 401 || rc == 403) return "fail";
+                if (finalUrl.contains("/login") || finalUrl.contains("/signin")
+                        || finalUrl.contains("passport.") || finalUrl.contains("/authorize")) return "fail";
+            } catch (Exception e) {
+                // 网络异常不判定
+            }
+        }
+
+        boolean hintOk = hasLoginCookie(platform, cookie);
         try {
             if ("quark".equals(platform) || "uc".equals(platform)) {
                 String base = "quark".equals(platform) ? "https://drive-pc.quark.cn/1/clouddrive" : "https://drive.uc.cn/1/clouddrive";
-                String ref = "quark".equals(platform) ? "https://pan.quark.cn/" : "https://drive.uc.cn/";
+                String ref = "https://" + (md.isEmpty() ? "quark.cn" : md) + "/";
                 Map<String, String> h = cookieHeaders(cookie, ref);
                 String url = base + "/file/sort?pr=ucpro&fr=pc&pdir_fid=0&_page=1&_size=10&_fetch_total=1";
                 JSONObject obj = new JSONObject(httpGet(url, h));
@@ -353,7 +419,7 @@ public final class PanResolver {
                 return code == 0 ? "ok" : "fail";
             }
             if ("baidu".equals(platform)) {
-                Map<String, String> h = cookieHeaders(cookie, "https://pan.baidu.com/");
+                Map<String, String> h = cookieHeaders(cookie, "https://" + (md.isEmpty() ? "baidu.com" : md) + "/");
                 String url = "https://pan.baidu.com/api/list?dir=%2F&page=1&num=10&order=name&desc=0";
                 JSONObject obj = new JSONObject(httpGet(url, h));
                 return obj.optInt("errno", -1) == 0 ? "ok" : "fail";
@@ -369,11 +435,11 @@ public final class PanResolver {
         } catch (ResolveException e) {
             String m = e.getMessage() == null ? "" : e.getMessage();
             if (m.contains("401") || m.contains("403")) return "fail";   // 未登录/无权限
-            return "unknown";
+            return hintOk ? "ok" : "unknown";
         } catch (Exception e) {
-            return "unknown";
+            return hintOk ? "ok" : "unknown";
         }
-        return "unknown";
+        return hintOk ? "ok" : "unknown";
     }
 
     public static List<MyFile> listMyFiles(String platform, String cookie, String fid) throws ResolveException {
