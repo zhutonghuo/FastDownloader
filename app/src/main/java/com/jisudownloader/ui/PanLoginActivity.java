@@ -52,6 +52,8 @@ public class PanLoginActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        s.setJavaScriptCanOpenWindowsAutomatically(true);
+        s.setSupportMultipleWindows(true);
         s.setUserAgentString("Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36");
         s.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
         s.setRenderPriority(WebSettings.RenderPriority.HIGH);
@@ -65,15 +67,35 @@ public class PanLoginActivity extends Activity {
         }
 
         final TextView titleLbl = findViewById(R.id.loginTitle);
+        final View overlay = findViewById(R.id.loadingOverlay);
         web.setWebChromeClient(new WebChromeClient() {
             @Override public void onProgressChanged(WebView v, int p) {
                 titleLbl.setText("登录 " + platform + " · 加载中 " + p + "%");
             }
+            @Override public boolean onCreateWindow(WebView v, boolean dialog, boolean userGesture,
+                                                    android.os.Message resultMsg) {
+                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                transport.setWebView(v);
+                resultMsg.sendToTarget();
+                return true;
+            }
         });
         web.setWebViewClient(new WebViewClient() {
+            @Override public void onPageStarted(WebView v, String url, android.graphics.Bitmap favicon) {
+                overlay.setVisibility(View.VISIBLE);
+            }
+            @Override public boolean shouldOverrideUrlLoading(WebView v, String url) {
+                if (url == null) return false;
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    v.loadUrl(url);
+                    return true;
+                }
+                return false;
+            }
             @Override public void onPageFinished(WebView v, String url) {
                 collect(url);
                 titleLbl.setText("登录 " + platform + " · 完成后点右上角");
+                overlay.setVisibility(View.GONE);
             }
         });
         web.loadUrl(loginUrl(platform));
