@@ -88,20 +88,24 @@ public class MainActivity extends Activity implements TaskStore.Listener {
         checkHomeUpdate();
     }
 
+    private void showUpdateCard(String tag, String apkUrl) {
+        if (tag == null || apkUrl == null) return;
+        View card = findViewById(R.id.updateCard);
+        if (card == null) return;
+        ((TextView) findViewById(R.id.updateTitle)).setText("发现新版本 " + tag);
+        ((TextView) findViewById(R.id.updateDesc)).setText("当前 v" + com.jisudownloader.util.UpdateChecker.currentVer(MainActivity.this) + " · 点击更新");
+        card.setVisibility(View.VISIBLE);
+        final String url = apkUrl;
+        findViewById(R.id.updateBtn).setOnClickListener(v ->
+            com.jisudownloader.util.UpdateChecker.downloadAndInstall(
+                MainActivity.this, url, (TextView) v));
+    }
+
     private void checkHomeUpdate() {
         com.jisudownloader.util.UpdateChecker.check(this,
             new com.jisudownloader.util.UpdateChecker.Callback() {
                 @Override public void onResult(String tag, String apkUrl) {
-                    if (tag == null) return;
-                    View card = findViewById(R.id.updateCard);
-                    if (card == null) return;
-                    ((TextView) findViewById(R.id.updateTitle)).setText("发现新版本 " + tag);
-                    ((TextView) findViewById(R.id.updateDesc)).setText("当前 v" + com.jisudownloader.util.UpdateChecker.currentVer(MainActivity.this) + " · 点击下载安装");
-                    card.setVisibility(View.VISIBLE);
-                    final String url = apkUrl;
-                    findViewById(R.id.updateBtn).setOnClickListener(v ->
-                        com.jisudownloader.util.UpdateChecker.downloadAndInstall(
-                            MainActivity.this, url, (TextView) v));
+                    showUpdateCard(tag, apkUrl);
                 }
                 @Override public void onError(String msg) {
                 }
@@ -126,6 +130,10 @@ public class MainActivity extends Activity implements TaskStore.Listener {
         }
         ensureService();
         startTick();
+        String[] pending = com.jisudownloader.util.UpdateChecker.takePending(this);
+        if (pending != null) {
+            showUpdateCard(pending[0], pending[1]);
+        }
     }
 
     @Override
