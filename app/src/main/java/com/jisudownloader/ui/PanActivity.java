@@ -5,11 +5,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
+import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,25 +18,27 @@ import com.jisudownloader.model.Task;
 import com.jisudownloader.model.TaskStore;
 import com.jisudownloader.net.PanResolver;
 import com.jisudownloader.service.DownloadService;
-import com.jisudownloader.util.Fmt;
+import com.jisudownloader.util.AccountStore;
 import com.jisudownloader.util.Prefs;
 import com.jisudownloader.util.ThemeHelper;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PanActivity extends Activity {
     private EditText input;
-    private EditText cookieInput;
-    private TextView platform;
-    private Spinner platformSpinner;
-    private ListView list;
-    private static final String[] PLATFORM_IDS = {null, "quark", "uc", "baidu", "xunlei", "c139",
-            "pan123", "pan115", "guangya", "ilanzou", "lanzou", "github"};
-    private static final String[] PLATFORM_NAMES = {"自动识别", "夸克网盘", "UC网盘", "百度网盘", "迅雷网盘",
-            "139和彩云", "123云盘", "115网盘", "光鸭云盘", "蓝奏云优享", "蓝奏云", "GitHub"};
-    private final List<PanResolver.PanFile> files = new ArrayList<>();
+    private CheckBox saveChk;
+    private ListView accounts;
     private final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+    private int loginReq = 1001;
+    private String pendingAfterLogin = null;
+
+    private static final String[] PLATFORM_IDS = {"quark", "uc", "baidu", "xunlei", "c139",
+            "pan123", "pan115", "guangya", "ilanzou", "lanzou", "github"};
+    private static final String[] PLATFORM_NAMES = {"夸克网盘", "UC网盘", "百度网盘", "迅雷网盘",
+            "139和彩云", "123云盘", "115网盘", "光鸭云盘", "蓝奏云优享", "蓝奏云", "GitHub"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,181 +46,178 @@ public class PanActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pan);
         findViewById(R.id.root).setBackgroundColor(ThemeHelper.bgColor(this));
-        View header = findViewById(R.id.header);
-        header.setBackgroundColor(ThemeHelper.primary(this));
-        getActionBar();
+        findViewById(R.id.header).setBackgroundColor(ThemeHelper.primary(this));
 
         input = findViewById(R.id.panInput);
-        cookieInput = findViewById(R.id.panCookie);
-        platform = findViewById(R.id.panPlatform);
-        platformSpinner = findViewById(R.id.panPlatformSpinner);
-        list = findViewById(R.id.panList);
-        list.setAdapter(new FileAdapter());
-
-        ArrayAdapter<String> pa = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, PLATFORM_NAMES);
-        pa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        platformSpinner.setAdapter(pa);
-        platformSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(android.widget.AdapterView<?> p, android.view.View v, int pos, long id) {
-                platform.setText("已选平台：" + PLATFORM_NAMES[pos]);
-                input.setHint(hintFor(PLATFORM_IDS[pos]));
-            }
-            @Override public void onNothingSelected(android.widget.AdapterView<?> p) { }
+        saveChk = findViewById(R.id.panSave);
+        accounts = findViewById(R.id.panAccounts);
+        accounts.setAdapter(new AccountAdapter());
+        accounts.setOnItemClickListener((p, v, pos, id) -> {
+            String pid = PLATFORM_IDS[pos];
+            if (AccountStore.isLogin(this, pid)) openMyFiles(pid);
+            else openLogin(pid, null);
         });
-
         findViewById(R.id.btnParse).setOnClickListener(v -> parse());
-        findViewById(R.id.btnWebLogin).setOnClickListener(v -> openLogin());
-        findViewById(R.id.btnMyFiles).setOnClickListener(v -> openMyFiles());
-        list.setOnItemClickListener((p, v, pos, id) -> addTask(files.get(pos)));
     }
 
-    private void openMyFiles() {
-        String pid = pickedPlatform();
-        if (pid == null || "github".equals(pid)) {
-            toast("请先选择网盘平台（夸克 / UC / 百度）"); return;
+    @Override
+    protected void onResume() {
+        super.onResume();
+        ((BaseAdapter) accounts.getAdapter()).notifyDataSetChanged();
+    }
+
+    private void openLogin(String pid, String after) {
+        pendingAfterLogin = after;
+        Intent i = new Intent(this, PanLoginActivity.class);
+        i.putExtra(PanLoginActivity.EXTRA_PLATFORM, pid);
+        startActivityForResult(i, loginReq);
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == loginReq && res == RESULT_OK && data != null) {
+            String c = data.getStringExtra("cookies");
+            String pid = data.getStringExtra("platform");
+            if (c != null && !c.isEmpty() && pid != null) {
+                AccountStore.save(this, pid, c);
+                ((BaseAdapter) accounts.getAdapter()).notifyDataSetChanged();
+                toast("已登录 " + pid);
+                if (pendingAfterLogin != null) {
+                    String text = pendingAfterLogin;
+                    pendingAfterLogin = null;
+                    runPipeline(text, c);
+                }
+            }
         }
-        String cookie = cookieInput.getText().toString().trim();
-        if (cookie.isEmpty()) { toast("请先点「网页登录」或粘贴 Cookie"); return; }
+    }
+
+    private void openMyFiles(String pid) {
+        String cookie = AccountStore.get(this, pid);
+        if (cookie.isEmpty()) { toast("请先登录"); return; }
         Intent i = new Intent(this, MyFilesActivity.class);
         i.putExtra(MyFilesActivity.EXTRA_PLATFORM, pid);
         i.putExtra(MyFilesActivity.EXTRA_COOKIE, cookie);
         startActivity(i);
     }
 
-    private String hintFor(String pid) {
-        if (pid == null) return "粘贴网盘分享链接（可整段，自动提取提取码）";
-        switch (pid) {
-            case "quark": return "https://pan.quark.cn/s/xxxx 提取码: abcd";
-            case "uc": return "https://drive.uc.cn/s/xxxx 密码: abcd";
-            case "baidu": return "https://pan.baidu.com/s/1xxxx 提取码: abcd";
-            case "xunlei": return "https://pan.xunlei.com/s/xxxx?pwd=abcd";
-            case "github": return "https://github.com/owner/repo";
-            case "lanzou": return "https://www.lanzoui.com/xxxx";
-            case "ilanzou": return "https://www.ilanzou.com/s/xxxx";
-            default: return "粘贴 " + pid + " 的分享链接";
-        }
-    }
-
-    private String pickedPlatform() {
-        int pos = platformSpinner.getSelectedItemPosition();
-        return pos >= 0 && pos < PLATFORM_IDS.length ? PLATFORM_IDS[pos] : null;
-    }
-
-    private void openLogin() {
-        String pid = pickedPlatform();
-        String text = input.getText().toString().trim();
-        PanResolver.Share share = text.isEmpty() ? null : PanResolver.parse(text);
-        String p = pid != null ? pid : (share == null ? "quark" : share.platform);
-        android.content.Intent i = new android.content.Intent(this, PanLoginActivity.class);
-        i.putExtra(PanLoginActivity.EXTRA_PLATFORM, p);
-        startActivityForResult(i, 1001);
-    }
-
-    @Override
-    protected void onActivityResult(int req, int res, android.content.Intent data) {
-        super.onActivityResult(req, res, data);
-        if (req == 1001 && res == RESULT_OK && data != null) {
-            String c = data.getStringExtra("cookies");
-            if (c != null && !c.isEmpty()) {
-                cookieInput.setText(c);
-                toast("已自动填入登录 Cookie");
-            }
-        }
-    }
-
     private void parse() {
         String text = input.getText().toString().trim();
-        if (text.isEmpty()) {
-            toast("请先粘贴分享链接");
+        if (text.isEmpty()) { toast("请先粘贴分享链接"); return; }
+        PanResolver.Share share = PanResolver.parse(text);
+        if (share == null) { toast("未识别的网盘链接"); return; }
+        String pid = share.platform;
+        String cookie = AccountStore.get(this, pid);
+        boolean needLogin = false;
+        for (String s : PLATFORM_IDS) {
+            if (s.equals(pid)) { needLogin = !"github".equals(pid) && !"lanzou".equals(pid)
+                    && !"ilanzou".equals(pid) && cookie.isEmpty(); break; }
+        }
+        if (needLogin) {
+            toast("该网盘未登录，正在打开登录页…");
+            openLogin(pid, text);
             return;
         }
-        PanResolver.Share share = PanResolver.parse(text, pickedPlatform());
-        if (share == null) {
-            platform.setText("平台：未识别（检查链接格式）");
-            toast("未识别的网盘链接");
-            return;
-        }
-        platform.setText("平台：" + share.platformName + " · " + share.shareId);
-        String cookie = cookieInput.getText().toString().trim();
+        runPipeline(text, cookie.isEmpty() ? null : cookie);
+    }
+
+    private void runPipeline(String text, String cookie) {
         new Thread(() -> {
             try {
-                List<PanResolver.PanFile> result = PanResolver.resolve(share, cookie);
+                PanResolver.Share share = PanResolver.parse(text);
+                if (share == null) throw new PanResolver.ResolveException("未识别链接");
+                java.util.List<PanResolver.PanFile> files = PanResolver.resolve(share, cookie);
+                String saveMsg = "";
+                if (saveChk.isChecked() && cookie != null
+                        && ("quark".equals(share.platform) || "uc".equals(share.platform))) {
+                    try {
+                        PanResolver.saveToMyDrive(share, files, cookie);
+                        saveMsg = "，已转存到我的网盘";
+                    } catch (PanResolver.ResolveException se) {
+                        saveMsg = "，转存失败，改为直接下载";
+                    }
+                }
+                java.util.List<PanResolver.PanFile> direct = new ArrayList<>();
+                if ("quark".equals(share.platform) || "uc".equals(share.platform)) {
+                    for (PanResolver.PanFile f : files) direct.addAll(PanResolver.quarkDirect(f, cookie));
+                } else {
+                    for (PanResolver.PanFile f : files) if (f.url != null && !f.url.isEmpty()) direct.add(f);
+                }
+                if (direct.isEmpty()) throw new PanResolver.ResolveException("未取到下载直链");
+                final String msg = saveMsg;
                 main.post(() -> {
-                    files.clear();
-                    files.addAll(result);
-                    ((BaseAdapter) list.getAdapter()).notifyDataSetChanged();
-                    toast("解析到 " + result.size() + " 个文件，点击加入下载");
+                    for (PanResolver.PanFile f : direct) addDirect(f, cookie);
+                    toast("已加入下载 " + direct.size() + " 个文件" + msg);
                 });
             } catch (PanResolver.ResolveException e) {
                 main.post(() -> toast(e.getMessage()));
             } catch (Exception e) {
-                main.post(() -> toast("解析失败：" + e.getMessage()));
+                main.post(() -> toast("下载失败：" + e.getMessage()));
             }
         }).start();
-    }
-
-    private void addTask(PanResolver.PanFile f) {
-        final String cookie = cookieInput.getText().toString().trim();
-        if (f.url == null || f.url.isEmpty()) {
-            if (f.cookie != null && f.cookie.startsWith("baidu://")) {
-                toast("百度直链暂未开放，请用 GitHub / 蓝奏云 / 夸克 / UC");
-                return;
-            }
-            new Thread(() -> {
-                try {
-                    java.util.List<PanResolver.PanFile> direct = PanResolver.quarkDirect(f, cookie);
-                    main.post(() -> {
-                        if (direct.isEmpty()) toast("取直链失败");
-                        else addDirect(direct.get(0), cookie);
-                    });
-                } catch (PanResolver.ResolveException e) {
-                    main.post(() -> toast(e.getMessage()));
-                }
-            }).start();
-            return;
-        }
-        addDirect(f, cookie);
     }
 
     private void addDirect(PanResolver.PanFile f, String cookie) {
         Task t = Task.fromSource(f.url, Prefs.threads());
         t.displayName = f.name;
-        java.util.Map<String, String> h = new java.util.HashMap<>();
+        Map<String, String> h = new HashMap<>();
         if (f.referer != null) h.put("Referer", f.referer);
         if (cookie != null && !cookie.isEmpty()) h.put("Cookie", cookie);
         t.headers = h;
         TaskStore.add(t);
-        ensureService();
-        DownloadService.pump(this);
-        toast("已加入下载：" + f.name);
-    }
-
-    private void ensureService() {
         Intent i = new Intent(this, DownloadService.class);
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) startForegroundService(i);
             else startService(i);
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
+        DownloadService.pump(this);
     }
 
-    private void toast(String s) {
-        Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
-    }
+    private void toast(String s) { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); }
 
-    private class FileAdapter extends BaseAdapter {
-        @Override public int getCount() { return files.size(); }
-        @Override public Object getItem(int i) { return files.get(i); }
+    private class AccountAdapter extends BaseAdapter {
+        @Override public int getCount() { return PLATFORM_IDS.length; }
+        @Override public Object getItem(int i) { return PLATFORM_IDS[i]; }
         @Override public long getItemId(int i) { return i; }
         @Override public View getView(int i, View convert, ViewGroup parent) {
-            TextView tv = convert instanceof TextView ? (TextView) convert : new TextView(PanActivity.this);
-            PanResolver.PanFile f = files.get(i);
-            tv.setText(f.name + "\n" + Fmt.size(f.size));
-            tv.setTextSize(14);
-            tv.setTextColor(ThemeHelper.textColor(PanActivity.this));
-            tv.setPadding(16, 12, 16, 12);
-            return tv;
+            LinearLayout row = convert instanceof LinearLayout ? (LinearLayout) convert : new LinearLayout(PanActivity.this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(16, 14, 16, 14);
+            if (row.getChildCount() == 0) {
+                TextView tv = new TextView(PanActivity.this);
+                tv.setId(R.id.acctName);
+                tv.setTextSize(15);
+                tv.setLayoutParams(new LinearLayout.LayoutParams(0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+                TextView btn = new TextView(PanActivity.this);
+                btn.setId(R.id.acctBtn);
+                btn.setTextSize(13);
+                btn.setPadding(14, 6, 14, 6);
+                row.addView(tv); row.addView(btn);
+            }
+            TextView tv = row.findViewById(R.id.acctName);
+            TextView btn = row.findViewById(R.id.acctBtn);
+            final String pid = PLATFORM_IDS[i];
+            boolean logged = AccountStore.isLogin(PanActivity.this, pid);
+            tv.setText((logged ? "● " : "○ ") + PLATFORM_NAMES[i] + (logged ? "  · 已登录" : "  · 未登录"));
+            tv.setTextColor(logged ? 0xFF17A673 : ThemeHelper.subColor(PanActivity.this));
+            if (logged) {
+                btn.setText("退出");
+                btn.setTextColor(ThemeHelper.subColor(PanActivity.this));
+            } else {
+                btn.setText("登录");
+                btn.setTextColor(ThemeHelper.primary(PanActivity.this));
+            }
+            btn.setOnClickListener(v -> {
+                if (AccountStore.isLogin(PanActivity.this, pid)) {
+                    AccountStore.logout(PanActivity.this, pid);
+                    ((BaseAdapter) accounts.getAdapter()).notifyDataSetChanged();
+                    toast("已退出 " + pid);
+                } else {
+                    openLogin(pid, null);
+                }
+            });
+            return row;
         }
     }
 }
