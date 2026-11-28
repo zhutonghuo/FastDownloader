@@ -10,8 +10,8 @@ android {
         applicationId = "com.jisudownloader"
         minSdk = 24
         targetSdk = 34
-        versionCode = 34
-        versionName = "1.34"
+        versionCode = 35
+        versionName = "1.35"
     }
 
     buildTypes {

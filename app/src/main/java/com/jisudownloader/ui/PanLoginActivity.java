@@ -17,9 +17,21 @@ import com.jisudownloader.util.ThemeHelper;
 
 public class PanLoginActivity extends Activity {
     public static final String EXTRA_PLATFORM = "platform";
+
+    /** 桌面版 UA：让网盘返回电脑版页面（与 Windows 端一致）。 */
+    private static final String UA_DESKTOP =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+    /** 手机版 UA：个别站点（如 139 云盘）桌面版反而不好用，可切回来。 */
+    private static final String UA_MOBILE =
+            "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) "
+                    + "Chrome/126.0.0.0 Mobile Safari/537.36";
+
     private WebView web;
     private TextView titleLbl;
+    private TextView btnDesktop;
     private int zoomSteps = 0;
+    private boolean desktopMode = true;
     private String platform;
     private final java.util.Map<String, String> cookies = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -59,7 +71,7 @@ public class PanLoginActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setJavaScriptCanOpenWindowsAutomatically(true);
         s.setSupportMultipleWindows(true);
-        s.setUserAgentString("Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36");
+        s.setUserAgentString(UA_DESKTOP);
         s.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
         s.setRenderPriority(WebSettings.RenderPriority.HIGH);
         s.setLoadsImagesAutomatically(true);
@@ -138,6 +150,29 @@ public class PanLoginActivity extends Activity {
             showZoom("已复位");
         });
         findViewById(R.id.btnClearCookie).setOnClickListener(v -> clearCookies());
+        btnDesktop = findViewById(R.id.btnDesktop);
+        updateDesktopBtn();
+        btnDesktop.setOnClickListener(v -> switchMode());
+    }
+
+    /** 切换电脑版 / 手机版网页（改变 UA 后重新加载当前页） */
+    private void switchMode() {
+        desktopMode = !desktopMode;
+        WebSettings s = web.getSettings();
+        s.setUserAgentString(desktopMode ? UA_DESKTOP : UA_MOBILE);
+        updateDesktopBtn();
+        String cur = web.getUrl();
+        if (cur == null || cur.isEmpty()) cur = loginUrl(platform);
+        web.loadUrl(cur);
+        Toast.makeText(this, desktopMode ? "已切换到电脑版网页" : "已切换到手机版网页",
+                Toast.LENGTH_SHORT).show();
+    }
+
+    private void updateDesktopBtn() {
+        if (btnDesktop == null) return;
+        btnDesktop.setText(desktopMode ? "电脑版" : "手机版");
+        btnDesktop.setTextColor(desktopMode
+                ? ThemeHelper.primary(this) : ThemeHelper.subColor(this));
     }
 
     private void showZoom(String msg) {
